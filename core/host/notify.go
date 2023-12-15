@@ -1,8 +1,8 @@
 package host
 
 import (
-	"rambollwong/rainbowbee/core/peer"
-	"rambollwong/rainbowbee/core/protocol"
+	"github.com/rambollwong/rainbowbee/core/peer"
+	"github.com/rambollwong/rainbowbee/core/protocol"
 )
 
 // HostNotifiee contains functions for host notification callbacks.

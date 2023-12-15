@@ -1,8 +1,8 @@
 package store
 
 import (
-	"rambollwong/rainbowbee/core/peer"
-	"rambollwong/rainbowbee/core/protocol"
+	"github.com/rambollwong/rainbowbee/core/peer"
+	"github.com/rambollwong/rainbowbee/core/protocol"
 
 	ma "github.com/multiformats/go-multiaddr"
 )

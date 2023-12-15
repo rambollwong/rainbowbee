@@ -3,9 +3,9 @@ package mgr
 import (
 	"io"
 
-	"rambollwong/rainbowbee/core"
-	"rambollwong/rainbowbee/core/network"
-	"rambollwong/rainbowbee/core/peer"
+	"github.com/rambollwong/rainbowbee/core"
+	"github.com/rambollwong/rainbowbee/core/network"
+	"github.com/rambollwong/rainbowbee/core/peer"
 
 	ma "github.com/multiformats/go-multiaddr"
 )

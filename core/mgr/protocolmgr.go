@@ -1,10 +1,10 @@
 package mgr
 
 import (
-	"rambollwong/rainbowbee/core/handler"
-	"rambollwong/rainbowbee/core/network"
-	"rambollwong/rainbowbee/core/peer"
-	"rambollwong/rainbowbee/core/protocol"
+	"github.com/rambollwong/rainbowbee/core/handler"
+	"github.com/rambollwong/rainbowbee/core/network"
+	"github.com/rambollwong/rainbowbee/core/peer"
+	"github.com/rambollwong/rainbowbee/core/protocol"
 )
 
 // ProtocolSupportNotifyFunc is a function type used to notify whether a peer supports a protocol.

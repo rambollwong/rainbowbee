@@ -1,10 +1,10 @@
 package broadcast
 
 import (
-	"rambollwong/rainbowbee/core/handler"
-	"rambollwong/rainbowbee/core/host"
-	"rambollwong/rainbowbee/core/peer"
-	"rambollwong/rainbowbee/core/protocol"
+	"github.com/rambollwong/rainbowbee/core/handler"
+	"github.com/rambollwong/rainbowbee/core/host"
+	"github.com/rambollwong/rainbowbee/core/peer"
+	"github.com/rambollwong/rainbowbee/core/protocol"
 )
 
 // PubSub provides functions for broadcasting and subscribing messages to the network.

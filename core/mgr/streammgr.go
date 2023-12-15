@@ -3,8 +3,8 @@ package mgr
 import (
 	"io"
 
-	"rambollwong/rainbowbee/core/network"
-	"rambollwong/rainbowbee/core/peer"
+	"github.com/rambollwong/rainbowbee/core/network"
+	"github.com/rambollwong/rainbowbee/core/peer"
 )
 
 // SendStreamPool is a pool that stores send streams.

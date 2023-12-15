@@ -1,5 +1,7 @@
 package peer
 
+import "crypto/x509"
+
 // ID represents the unique identity of a peer.
 type ID string
 
@@ -21,3 +23,7 @@ func (i ID) WeightCompare(other ID) bool {
 	}
 	return true
 }
+
+// IDLoader is a function can load the peer.ID
+// from []*x509.Certificate exchanged during tls handshaking.
+type IDLoader func([]*x509.Certificate) (ID, error)
