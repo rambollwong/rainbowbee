@@ -3,11 +3,11 @@ package network
 import (
 	"io"
 
-	"rambollwong/rainbowbee/core/peer"
+	"github.com/rambollwong/rainbowbee/core/peer"
 )
 
-// ConnHandler is a function for handling connections.
-type ConnHandler func(conn Connection) (bool, error)
+// ConnectionHandler is a function for handling connections.
+type ConnectionHandler func(conn Connection) (bool, error)
 
 // Network is a state machine interface that provides a Dialer and a Listener to build a network.
 type Network interface {
@@ -15,8 +15,8 @@ type Network interface {
 	Listener
 	io.Closer
 
-	// SetNewConnHandler registers a ConnHandler to handle the established connections.
-	SetNewConnHandler(handler ConnHandler)
+	// SetConnHandler registers a ConnectionHandler to handle the established connections.
+	SetConnHandler(handler ConnectionHandler)
 
 	// Disconnect closes a connection.
 	Disconnect(conn Connection) error

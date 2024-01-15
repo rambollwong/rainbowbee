@@ -1,8 +1,8 @@
 package blacklist
 
 import (
-	"rambollwong/rainbowbee/core/network"
-	"rambollwong/rainbowbee/core/peer"
+	"github.com/rambollwong/rainbowbee/core/network"
+	"github.com/rambollwong/rainbowbee/core/peer"
 )
 
 // PeerBlackList is a blacklist implementation for net addresses or peer ids .

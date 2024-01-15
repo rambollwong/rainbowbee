@@ -4,14 +4,14 @@ import (
 	"context"
 	"crypto"
 
-	"rambollwong/rainbowbee/core"
-	"rambollwong/rainbowbee/core/blacklist"
-	"rambollwong/rainbowbee/core/handler"
-	"rambollwong/rainbowbee/core/mgr"
-	"rambollwong/rainbowbee/core/network"
-	"rambollwong/rainbowbee/core/peer"
-	"rambollwong/rainbowbee/core/protocol"
-	"rambollwong/rainbowbee/core/store"
+	"github.com/rambollwong/rainbowbee/core"
+	"github.com/rambollwong/rainbowbee/core/blacklist"
+	"github.com/rambollwong/rainbowbee/core/handler"
+	"github.com/rambollwong/rainbowbee/core/mgr"
+	"github.com/rambollwong/rainbowbee/core/network"
+	"github.com/rambollwong/rainbowbee/core/peer"
+	"github.com/rambollwong/rainbowbee/core/protocol"
+	"github.com/rambollwong/rainbowbee/core/store"
 
 	ma "github.com/multiformats/go-multiaddr"
 )

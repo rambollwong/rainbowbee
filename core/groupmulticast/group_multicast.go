@@ -1,8 +1,8 @@
 package groupmulticast
 
 import (
-	"rambollwong/rainbowbee/core/peer"
-	"rambollwong/rainbowbee/core/protocol"
+	"github.com/rambollwong/rainbowbee/core/peer"
+	"github.com/rambollwong/rainbowbee/core/protocol"
 )
 
 // GroupMulticast sends messages to all peers in a group.
