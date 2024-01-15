@@ -9,7 +9,7 @@ import (
 type Status interface {
 	Direction() Direction
 	EstablishedTime() time.Time
-	Extra() map[interface{}]interface{}
+	Extra() map[any]any
 	SetClosed()
 	IsClosed() bool
 }
@@ -23,11 +23,11 @@ type BasicStatus struct {
 	// closed specifies whether this connection has been closed. 0 means open, 1 means closed
 	closed uint32
 	// extra stores other metadata of this connection.
-	extra map[interface{}]interface{}
+	extra map[any]any
 }
 
 // NewStatus creates a new BasicStatus instance.
-func NewStatus(direction Direction, establishedTime time.Time, extra map[interface{}]interface{}) *BasicStatus {
+func NewStatus(direction Direction, establishedTime time.Time, extra map[any]any) *BasicStatus {
 	return &BasicStatus{direction: direction, establishedTime: establishedTime, closed: 0, extra: extra}
 }
 
