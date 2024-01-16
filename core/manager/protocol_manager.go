@@ -1,4 +1,4 @@
-package mgr
+package manager
 
 import (
 	"github.com/rambollwong/rainbowbee/core/handler"

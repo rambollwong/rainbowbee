@@ -7,7 +7,7 @@ import (
 	"github.com/rambollwong/rainbowbee/core"
 	"github.com/rambollwong/rainbowbee/core/blacklist"
 	"github.com/rambollwong/rainbowbee/core/handler"
-	"github.com/rambollwong/rainbowbee/core/mgr"
+	"github.com/rambollwong/rainbowbee/core/manager"
 	"github.com/rambollwong/rainbowbee/core/network"
 	"github.com/rambollwong/rainbowbee/core/peer"
 	"github.com/rambollwong/rainbowbee/core/protocol"
@@ -58,11 +58,11 @@ type Host interface {
 	// PeerStore returns the store.PeerStore instance associated with the host.
 	PeerStore() store.PeerStore
 
-	// ConnMgr returns the mgr.ConnectionMgr instance associated with the host.
-	ConnMgr() mgr.ConnectionMgr
+	// ConnMgr returns the manager.ConnectionManager instance associated with the host.
+	ConnMgr() manager.ConnectionManager
 
-	// ProtocolMgr returns the mgr.ProtocolManager instance associated with the host.
-	ProtocolMgr() mgr.ProtocolManager
+	// ProtocolMgr returns the manager.ProtocolManager instance associated with the host.
+	ProtocolMgr() manager.ProtocolManager
 
 	// PeerBlackList returns the blacklist.PeerBlackList instance associated with the host.
 	PeerBlackList() blacklist.PeerBlackList

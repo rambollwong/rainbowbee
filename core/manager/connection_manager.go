@@ -1,4 +1,4 @@
-package mgr
+package manager
 
 import (
 	"io"
@@ -10,9 +10,9 @@ import (
 	ma "github.com/multiformats/go-multiaddr"
 )
 
-// ConnectionMgr provides a connection manager.
-type ConnectionMgr interface {
-	io.Closer // ConnectionMgr interface inherits the io.Closer interface, indicating it can be closed.
+// ConnectionManager provides a connection manager.
+type ConnectionManager interface {
+	io.Closer // ConnectionManager interface inherits the io.Closer interface, indicating it can be closed.
 
 	// AddPeerConnection adds the given peer.ID and network.Connection to the connection manager.
 	// It returns a boolean indicating whether the connection was successfully added.
@@ -53,9 +53,9 @@ type ConnectionMgr interface {
 	AllPeer() []peer.ID
 }
 
-// ConnSupervisor maintains the connection state of the necessary peers.
+// ConnectionSupervisor maintains the connection state of the necessary peers.
 // If a necessary peer is not connected to us, supervisor will try to dial to it.
-type ConnSupervisor interface {
+type ConnectionSupervisor interface {
 	core.Switcher
 
 	// SetPeerAddr will set a peer as a necessary peer and store the peer's address.
