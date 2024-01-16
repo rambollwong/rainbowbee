@@ -6,6 +6,7 @@ require (
 	github.com/libp2p/go-yamux/v4 v4.0.1
 	github.com/multiformats/go-multiaddr v0.12.0
 	github.com/multiformats/go-multiaddr-fmt v0.1.0
+	github.com/rambollwong/rainbowcat v0.0.0-20240116094954-787825b15226
 	github.com/rambollwong/rainbowlog v0.0.2
 	golang.org/x/sys v0.15.0
 )
@@ -27,7 +28,6 @@ require (
 	github.com/multiformats/go-multihash v0.0.14 // indirect
 	github.com/multiformats/go-varint v0.0.6 // indirect
 	github.com/pelletier/go-toml/v2 v2.1.0 // indirect
-	github.com/rambollwong/rainbowcat v0.0.0-20231127034005-2671d73fb488 // indirect
 	github.com/sagikazarmark/locafero v0.3.0 // indirect
 	github.com/sagikazarmark/slog-shim v0.1.0 // indirect
 	github.com/sourcegraph/conc v0.3.0 // indirect
