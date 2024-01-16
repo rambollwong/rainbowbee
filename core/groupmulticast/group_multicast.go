@@ -27,8 +27,8 @@ type GroupMulticast interface {
 
 	// SendToGroupSync sends data synchronously to the peers in the group.
 	// It waits until all data is successfully sent.
-	SendToGroupSync(groupName string, protocolID protocol.ProtocolID, data []byte) error
+	SendToGroupSync(groupName string, protocolID protocol.ID, data []byte) error
 
 	// SendToGroupAsync sends data asynchronously to the group without waiting.
-	SendToGroupAsync(groupName string, protocolID protocol.ProtocolID, data []byte)
+	SendToGroupAsync(groupName string, protocolID protocol.ID, data []byte)
 }

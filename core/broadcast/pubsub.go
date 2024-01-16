@@ -23,7 +23,7 @@ type PubSub interface {
 
 	// ProtocolID returns the protocol.ID of the PubSub service.
 	// The protocol ID will be registered in the host.RegisterMsgPayloadHandler method.
-	ProtocolID() protocol.ProtocolID
+	ProtocolID() protocol.ID
 
 	// ProtocolMsgHandler returns a function of type handler.MsgPayloadHandler.
 	// It will be registered in the host.Host.RegisterMsgPayloadHandler method.

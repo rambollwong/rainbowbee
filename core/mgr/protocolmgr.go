@@ -8,36 +8,36 @@ import (
 )
 
 // ProtocolSupportNotifyFunc is a function type used to notify whether a peer supports a protocol.
-type ProtocolSupportNotifyFunc func(protocolID protocol.ProtocolID, pid peer.ID)
+type ProtocolSupportNotifyFunc func(protocolID protocol.ID, pid peer.ID)
 
 // ProtocolManager manages all protocols and protocol message handlers for all peers.
 type ProtocolManager interface {
 	// RegisterMsgPayloadHandler registers a protocol supported by us
 	// and maps a handler.MsgPayloadHandler to this protocol.
-	RegisterMsgPayloadHandler(protocolID protocol.ProtocolID, handler handler.MsgPayloadHandler) error
+	RegisterMsgPayloadHandler(protocolID protocol.ID, handler handler.MsgPayloadHandler) error
 
 	// UnregisterMsgPayloadHandler unregisters a protocol supported by us.
-	UnregisterMsgPayloadHandler(protocolID protocol.ProtocolID) error
+	UnregisterMsgPayloadHandler(protocolID protocol.ID) error
 
 	// IsRegistered returns whether a protocol given is supported by us.
-	IsRegistered(protocolID protocol.ProtocolID) bool
+	IsRegistered(protocolID protocol.ID) bool
 
 	// GetHandler returns the handler.MsgPayloadHandler mapped to the protocol supported by us and the ID is the given protocolID.
 	// If the protocol is not supported by us, it returns nil.
-	GetHandler(protocolID protocol.ProtocolID) handler.MsgPayloadHandler
+	GetHandler(protocolID protocol.ID) handler.MsgPayloadHandler
 
 	// GetSelfSupportedProtocols returns a list of protocol.IDs that are supported by ourselves.
-	GetSelfSupportedProtocols() []protocol.ProtocolID
+	GetSelfSupportedProtocols() []protocol.ID
 
 	// IsPeerSupported returns whether the protocol is supported by the peer with the given peer.ID.
 	// If the peer is not connected to us, it returns false.
-	IsPeerSupported(pid peer.ID, protocolID protocol.ProtocolID) bool
+	IsPeerSupported(pid peer.ID, protocolID protocol.ID) bool
 
 	// GetPeerSupportedProtocols returns a list of protocol.IDs that are supported by the peer with the given peer.ID.
-	GetPeerSupportedProtocols(pid peer.ID) []protocol.ProtocolID
+	GetPeerSupportedProtocols(pid peer.ID) []protocol.ID
 
 	// SetPeerSupportedProtocols stores the protocols supported by the peer with the given peer.ID.
-	SetPeerSupportedProtocols(pid peer.ID, protocolIDs []protocol.ProtocolID)
+	SetPeerSupportedProtocols(pid peer.ID, protocolIDs []protocol.ID)
 
 	// CleanPeerSupportedProtocols removes all records of protocols supported by the peer with the given peer.ID.
 	CleanPeerSupportedProtocols(pid peer.ID)
@@ -53,7 +53,7 @@ type ProtocolManager interface {
 type ProtocolExchanger interface {
 	// ProtocolID returns the protocol.ID of the exchanger service.
 	// The protocol ID will be registered in the host.RegisterMsgPayloadHandler method.
-	ProtocolID() protocol.ProtocolID
+	ProtocolID() protocol.ID
 
 	// Handle returns the message payload handler of the exchanger service.
 	// It will be registered in the host.Host.RegisterMsgPayloadHandler method.
@@ -61,7 +61,7 @@ type ProtocolExchanger interface {
 
 	// ExchangeProtocol sends the protocols supported by us to the other peer and receives the protocols supported by the other peer.
 	// This method is invoked during connection establishment.
-	ExchangeProtocol(conn network.Connection) ([]protocol.ProtocolID, error)
+	ExchangeProtocol(conn network.Connection) ([]protocol.ID, error)
 
 	// PushProtocols sends the protocols supported by us to the other peer.
 	// This method is invoked when a new protocol is registered.

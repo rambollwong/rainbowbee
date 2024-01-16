@@ -19,7 +19,7 @@ import (
 // PeerProtocols stores the peer.ID and the list of protocol.IDs supported by the peer.
 type PeerProtocols struct {
 	PID       peer.ID
-	Protocols []protocol.ProtocolID
+	Protocols []protocol.ID
 }
 
 // Host provides network capabilities.
@@ -37,15 +37,15 @@ type Host interface {
 
 	// RegisterMsgPayloadHandler registers a handler.MsgPayloadHandler for handling
 	// messages received with the specified protocolID.
-	RegisterMsgPayloadHandler(protocolID protocol.ProtocolID, handler handler.MsgPayloadHandler) error
+	RegisterMsgPayloadHandler(protocolID protocol.ID, handler handler.MsgPayloadHandler) error
 
 	// UnregisterMsgPayloadHandler unregisters the handler.MsgPayloadHandler for
 	// the specified protocolID.
-	UnregisterMsgPayloadHandler(protocolID protocol.ProtocolID) error
+	UnregisterMsgPayloadHandler(protocolID protocol.ID) error
 
 	// SendMsg sends a message with the specified protocolID to the receiver
 	// identified by receiverPID.
-	SendMsg(protocolID protocol.ProtocolID, receiverPID peer.ID, msgPayload []byte) error
+	SendMsg(protocolID protocol.ID, receiverPID peer.ID, msgPayload []byte) error
 
 	// Dial attempts to establish a connection with a peer at the given remote address.
 	Dial(remoteAddr ma.Multiaddr) (network.Connection, error)
@@ -70,11 +70,11 @@ type Host interface {
 	// PeerProtocols returns the list of connected peers and their supported protocol.IDs.
 	// If protocolIDs is nil, it returns information about all connected peers.
 	// Otherwise, it returns information about connected peers that support the specified protocolIDs.
-	PeerProtocols(protocolIDs []protocol.ProtocolID) ([]*PeerProtocols, error)
+	PeerProtocols(protocolIDs []protocol.ID) ([]*PeerProtocols, error)
 
 	// IsPeerSupportProtocol checks if the peer identified by pid supports the specified protocolID.
 	// Returns true if the peer supports the protocol, otherwise returns false.
-	IsPeerSupportProtocol(pid peer.ID, protocolID protocol.ProtocolID) bool
+	IsPeerSupportProtocol(pid peer.ID, protocolID protocol.ID) bool
 
 	// Notify registers a HostNotifiee to receive notifications from the host.
 	Notify(notifiee HostNotifiee)
