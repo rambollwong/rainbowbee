@@ -10,47 +10,43 @@ import (
 	ma "github.com/multiformats/go-multiaddr"
 )
 
-// ConnectionManager provides a connection manager.
 type ConnectionManager interface {
-	io.Closer // ConnectionManager interface inherits the io.Closer interface, indicating it can be closed.
+	io.Closer
 
-	// AddPeerConnection adds the given peer.ID and network.Connection to the connection manager.
-	// It returns a boolean indicating whether the connection was successfully added.
+	// AddPeerConnection adds a connection to the peer identified by pid.
+	// Returns true if the connection was successfully added.
 	AddPeerConnection(pid peer.ID, conn network.Connection) bool
 
-	// RemovePeerConnection removes the given peer.ID and network.Connection from the connection manager.
-	// It returns a boolean indicating whether the connection was successfully removed.
+	// RemovePeerConnection removes a connection from the peer identified by pid.
+	// Returns true if the connection was found and removed.
 	RemovePeerConnection(pid peer.ID, conn network.Connection) bool
 
-	// ExistPeerConnection checks if the given peer.ID and network.Connection exist in the connection manager.
-	// It returns a boolean indicating whether the given connection exists.
+	// ExistPeerConnection checks if a connection exists for the peer identified by pid.
+	// Returns true if the connection exists.
 	ExistPeerConnection(pid peer.ID, conn network.Connection) bool
 
-	// GetPeerConnection returns the network.Connection for the given peer.ID.
-	GetPeerConnection(pid peer.ID) network.Connection
+	// PeerConnection returns the connection associated with the peer identified by pid.
+	PeerConnection(pid peer.ID) network.Connection
 
-	// GetPeerAllConnection returns all network.Connections for the given peer.ID.
-	GetPeerAllConnection(pid peer.ID) []network.Connection
+	// PeerAllConnection returns all connections associated with the peer identified by pid.
+	PeerAllConnection(pid peer.ID) []network.Connection
 
-	// IsConnected checks if the given peer.ID is connected.
-	// It returns a boolean indicating whether the peer is connected.
-	IsConnected(pid peer.ID) bool
+	// Connected checks if the peer identified by pid is connected.
+	// Returns true if the peer is connected.
+	Connected(pid peer.ID) bool
 
-	// IsAllowed checks if the given peer.ID is allowed.
-	// It returns a boolean indicating whether the peer is allowed.
-	IsAllowed(pid peer.ID) bool
+	// Allowed checks if the peer identified by pid is allowed to establish connections.
+	// Returns true if the peer is allowed.
+	Allowed(pid peer.ID) bool
 
-	// ExpendConnection expands the number of connections for the given peer.ID.
-	ExpendConnection(pid peer.ID)
+	// MaxCountOfPeersAllowed returns the maximum number of peers allowed to establish connections.
+	MaxCountOfPeersAllowed() int
 
-	// MaxPeerCountAllowed returns the maximum number of allowed peers.
-	MaxPeerCountAllowed() int
+	// CountOfPeers returns the current count of connected peers.
+	CountOfPeers() int
 
-	// PeerCount returns the current number of connected peers.
-	PeerCount() int
-
-	// AllPeer returns a list of all peer.IDs.
-	AllPeer() []peer.ID
+	// AllPeers returns a slice containing all the peer IDs of connected peers.
+	AllPeers() []peer.ID
 }
 
 // ConnectionSupervisor maintains the connection state of the necessary peers.
@@ -66,4 +62,7 @@ type ConnectionSupervisor interface {
 
 	// RemoveAllPeer clean all necessary peers.
 	RemoveAllPeer()
+
+	// NoticePeerDisconnected tells the supervisor that a node is disconnected.
+	NoticePeerDisconnected(pid peer.ID)
 }

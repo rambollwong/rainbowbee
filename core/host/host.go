@@ -58,11 +58,11 @@ type Host interface {
 	// PeerStore returns the store.PeerStore instance associated with the host.
 	PeerStore() store.PeerStore
 
-	// ConnMgr returns the manager.ConnectionManager instance associated with the host.
-	ConnMgr() manager.ConnectionManager
+	// ConnectionManager returns the manager.ConnectionManager instance associated with the host.
+	ConnectionManager() manager.ConnectionManager
 
-	// ProtocolMgr returns the manager.ProtocolManager instance associated with the host.
-	ProtocolMgr() manager.ProtocolManager
+	// ProtocolManager returns the manager.ProtocolManager instance associated with the host.
+	ProtocolManager() manager.ProtocolManager
 
 	// PeerBlackList returns the blacklist.PeerBlackList instance associated with the host.
 	PeerBlackList() blacklist.PeerBlackList
@@ -72,12 +72,12 @@ type Host interface {
 	// Otherwise, it returns information about connected peers that support the specified protocolIDs.
 	PeerProtocols(protocolIDs []protocol.ID) ([]*PeerProtocols, error)
 
-	// IsPeerSupportProtocol checks if the peer identified by pid supports the specified protocolID.
+	// PeerSupportProtocol checks if the peer identified by pid supports the specified protocolID.
 	// Returns true if the peer supports the protocol, otherwise returns false.
-	IsPeerSupportProtocol(pid peer.ID, protocolID protocol.ID) bool
+	PeerSupportProtocol(pid peer.ID, protocolID protocol.ID) bool
 
-	// Notify registers a HostNotifiee to receive notifications from the host.
-	Notify(notifiee HostNotifiee)
+	// Notify registers a Notifiee to receive notifications from the host.
+	Notify(notifiee Notifiee)
 
 	// AddDirectPeer appends a direct peer to the host.
 	AddDirectPeer(dp ma.Multiaddr) error

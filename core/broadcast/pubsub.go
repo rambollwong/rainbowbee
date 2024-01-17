@@ -29,9 +29,9 @@ type PubSub interface {
 	// It will be registered in the host.Host.RegisterMsgPayloadHandler method.
 	ProtocolMsgHandler() handler.MsgPayloadHandler
 
-	// HostNotifiee returns an implementation of the host.HostNotifiee interface.
+	// HostNotifiee returns an implementation of the host.Notifiee interface.
 	// It will be registered in the host.Host.Notify method.
-	HostNotifiee() host.HostNotifiee
+	HostNotifiee() host.Notifiee
 
 	// AttachHost sets up the given host for the PubSub service.
 	AttachHost(h host.Host) error

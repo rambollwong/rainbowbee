@@ -5,8 +5,8 @@ import (
 	"github.com/rambollwong/rainbowbee/core/protocol"
 )
 
-// HostNotifiee contains functions for host notification callbacks.
-type HostNotifiee interface {
+// Notifiee contains functions for host notification callbacks.
+type Notifiee interface {
 	// OnPeerConnected is invoked when a new connection is established.
 	OnPeerConnected(pid peer.ID)
 
@@ -20,10 +20,10 @@ type HostNotifiee interface {
 	OnPeerProtocolUnsupported(protocolID protocol.ID, pid peer.ID)
 }
 
-var _ HostNotifiee = (*HostNotifieeBundle)(nil)
+var _ Notifiee = (*NotifieeBundle)(nil)
 
-// HostNotifieeBundle is a bundle implementation of the HostNotifiee interface.
-type HostNotifieeBundle struct {
+// NotifieeBundle is a bundle implementation of the Notifiee interface.
+type NotifieeBundle struct {
 	OnPeerConnectedFunc           func(peer.ID)
 	OnPeerDisconnectedFunc        func(peer.ID)
 	OnPeerProtocolSupportedFunc   func(protocolID protocol.ID, pid peer.ID)
@@ -31,28 +31,28 @@ type HostNotifieeBundle struct {
 }
 
 // OnPeerConnected invokes the OnPeerConnectedFunc callback if it is set.
-func (n *HostNotifieeBundle) OnPeerConnected(pid peer.ID) {
+func (n *NotifieeBundle) OnPeerConnected(pid peer.ID) {
 	if n.OnPeerConnectedFunc != nil {
 		n.OnPeerConnectedFunc(pid)
 	}
 }
 
 // OnPeerDisconnected invokes the OnPeerDisconnectedFunc callback if it is set.
-func (n *HostNotifieeBundle) OnPeerDisconnected(pid peer.ID) {
+func (n *NotifieeBundle) OnPeerDisconnected(pid peer.ID) {
 	if n.OnPeerDisconnectedFunc != nil {
 		n.OnPeerDisconnectedFunc(pid)
 	}
 }
 
 // OnPeerProtocolSupported invokes the OnPeerProtocolSupportedFunc callback if it is set.
-func (n *HostNotifieeBundle) OnPeerProtocolSupported(protocolID protocol.ID, pid peer.ID) {
+func (n *NotifieeBundle) OnPeerProtocolSupported(protocolID protocol.ID, pid peer.ID) {
 	if n.OnPeerProtocolSupportedFunc != nil {
 		n.OnPeerProtocolSupportedFunc(protocolID, pid)
 	}
 }
 
 // OnPeerProtocolUnsupported invokes the OnPeerProtocolUnsupportedFunc callback if it is set.
-func (n *HostNotifieeBundle) OnPeerProtocolUnsupported(protocolID protocol.ID, pid peer.ID) {
+func (n *NotifieeBundle) OnPeerProtocolUnsupported(protocolID protocol.ID, pid peer.ID) {
 	if n.OnPeerProtocolUnsupportedFunc != nil {
 		n.OnPeerProtocolUnsupportedFunc(protocolID, pid)
 	}
