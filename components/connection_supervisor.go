@@ -135,7 +135,7 @@ func (c *ConnectionSupervisor) Stop() error {
 	return nil
 }
 
-// SetPeerAddr sets the multiaddress of a necessary peer.
+// SetPeerAddr sets the Multiaddr of a necessary peer.
 func (c *ConnectionSupervisor) SetPeerAddr(pid peer.ID, addr ma.Multiaddr) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
@@ -146,7 +146,7 @@ func (c *ConnectionSupervisor) SetPeerAddr(pid peer.ID, addr ma.Multiaddr) {
 	}
 }
 
-// RemovePeerAddr removes the multiaddress of a necessary peer.
+// RemovePeerAddr removes the Multiaddr of a necessary peer.
 func (c *ConnectionSupervisor) RemovePeerAddr(pid peer.ID) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
@@ -229,6 +229,10 @@ func (a *dialActuator) run() {
 		}
 
 		if a.supervisor.host.ConnectionManager().Connected(a.pid) {
+			a.supervisor.logger.Debug().
+				Msg("peer connected, dial actuator will exit.").
+				Str("pid", a.pid.String()).
+				Done()
 			a.finished = true
 			return true
 		}
