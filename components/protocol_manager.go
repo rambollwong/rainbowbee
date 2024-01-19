@@ -22,11 +22,23 @@ var (
 // ProtocolManager manages protocols and protocol message handlers for peers.
 type ProtocolManager struct {
 	mu                  sync.RWMutex
-	localPID            peer.ID
 	handlers            map[protocol.ID]handler.MsgPayloadHandler
 	protocolBook        store.ProtocolBook
 	supportedCallback   manager.ProtocolSupportNotifyFunc
 	unsupportedCallback manager.ProtocolSupportNotifyFunc
+}
+
+// NewProtocolManager creates a new instance of ProtocolManager with the provided ProtocolBook.
+// It initializes the internal fields of the ProtocolManager
+// and returns a value that implements the manager.ProtocolManager interface.
+func NewProtocolManager(protocolBook store.ProtocolBook) manager.ProtocolManager {
+	return &ProtocolManager{
+		mu:                  sync.RWMutex{},
+		handlers:            make(map[protocol.ID]handler.MsgPayloadHandler),
+		protocolBook:        protocolBook,
+		supportedCallback:   nil,
+		unsupportedCallback: nil,
+	}
 }
 
 // RegisterMsgPayloadHandler registers a protocol and associates a handler.MsgPayloadHandler with it.
