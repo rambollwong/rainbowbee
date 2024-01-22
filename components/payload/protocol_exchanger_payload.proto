@@ -1,0 +1,18 @@
+syntax = "proto3";
+
+option go_package = "github.com/rambollwong/rainbowbee/components/payload";
+
+package payload;
+
+message ProtocolExchangerPayload {
+  string pid = 1;
+  repeated string protocols = 2;
+  ProtocolExchangerPayloadType payload_type = 3;
+
+  enum ProtocolExchangerPayloadType {
+    PUSH = 0;
+    PUSH_OK = 1;
+    REQUEST = 2;
+    RESPONSE = 3;
+  }
+}

@@ -5,6 +5,7 @@ import (
 	"sync"
 
 	"github.com/rambollwong/rainbowbee/core/handler"
+	"github.com/rambollwong/rainbowbee/core/host"
 	"github.com/rambollwong/rainbowbee/core/manager"
 	"github.com/rambollwong/rainbowbee/core/peer"
 	"github.com/rambollwong/rainbowbee/core/protocol"
@@ -26,6 +27,7 @@ type ProtocolManager struct {
 	protocolBook        store.ProtocolBook
 	supportedCallback   manager.ProtocolSupportNotifyFunc
 	unsupportedCallback manager.ProtocolSupportNotifyFunc
+	h                   host.Host
 }
 
 // NewProtocolManager creates a new instance of ProtocolManager with the provided ProtocolBook.
@@ -38,6 +40,7 @@ func NewProtocolManager(protocolBook store.ProtocolBook) manager.ProtocolManager
 		protocolBook:        protocolBook,
 		supportedCallback:   nil,
 		unsupportedCallback: nil,
+		h:                   nil,
 	}
 }
 
@@ -74,6 +77,15 @@ func (p *ProtocolManager) Registered(protocolID protocol.ID) bool {
 	defer p.mu.RUnlock()
 	_, ok := p.handlers[protocolID]
 	return ok
+}
+
+// RegisteredAll returns a list of all registered protocol IDs.
+// It acquires a read lock to safely access the registered protocol IDs and their corresponding handlers.
+// It returns the list of protocol IDs as a slice.
+func (p *ProtocolManager) RegisteredAll() []protocol.ID {
+	p.mu.RLock()
+	defer p.mu.RUnlock()
+	return util.MapKeys(p.handlers)
 }
 
 // Handler returns the message payload handler associated with the registered protocol.

@@ -24,6 +24,9 @@ type ProtocolManager interface {
 	// It returns true if the protocol is supported, and false otherwise.
 	Registered(protocolID protocol.ID) bool
 
+	// RegisteredAll returns a list of protocol.IDs that have registered.
+	RegisteredAll() []protocol.ID
+
 	// Handler returns the message payload handler associated with the registered protocol.
 	// If the protocol is not registered or supported, it returns nil.
 	Handler(protocolID protocol.ID) handler.MsgPayloadHandler
