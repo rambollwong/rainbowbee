@@ -15,6 +15,7 @@ import (
 	"github.com/rambollwong/rainbowbee/core/network"
 	"github.com/rambollwong/rainbowbee/core/peer"
 	"github.com/rambollwong/rainbowbee/core/protocol"
+	"github.com/rambollwong/rainbowbee/log"
 	"github.com/rambollwong/rainbowbee/util"
 	catutil "github.com/rambollwong/rainbowcat/util"
 	"github.com/rambollwong/rainbowlog"
@@ -45,6 +46,18 @@ type ProtocolExchanger struct {
 	pushSignalC map[peer.ID]chan struct{} // Map of peer IDs to push signal channels.
 
 	logger *rainbowlog.Logger // Logger for logging events and errors.
+}
+
+func NewProtocolExchanger(h host.Host, protocolManager manager.ProtocolManager) manager.ProtocolExchanger {
+	return &ProtocolExchanger{
+		host:        h,
+		protocolMgr: protocolManager,
+		mu:          sync.RWMutex{},
+		pushSignalC: make(map[peer.ID]chan struct{}),
+		logger: log.Logger.SubLogger(
+			rainbowlog.WithLabels(log.DefaultLoggerLabel, "PROTOCOL_EXCHANGER"),
+		),
+	}
 }
 
 // ProtocolID returns the protocol ID of the ProtocolExchanger.

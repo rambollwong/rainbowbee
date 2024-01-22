@@ -5,7 +5,6 @@ import (
 	"sync"
 
 	"github.com/rambollwong/rainbowbee/core/handler"
-	"github.com/rambollwong/rainbowbee/core/host"
 	"github.com/rambollwong/rainbowbee/core/manager"
 	"github.com/rambollwong/rainbowbee/core/peer"
 	"github.com/rambollwong/rainbowbee/core/protocol"
@@ -27,7 +26,6 @@ type ProtocolManager struct {
 	protocolBook        store.ProtocolBook
 	supportedCallback   manager.ProtocolSupportNotifyFunc
 	unsupportedCallback manager.ProtocolSupportNotifyFunc
-	h                   host.Host
 }
 
 // NewProtocolManager creates a new instance of ProtocolManager with the provided ProtocolBook.
@@ -40,7 +38,6 @@ func NewProtocolManager(protocolBook store.ProtocolBook) manager.ProtocolManager
 		protocolBook:        protocolBook,
 		supportedCallback:   nil,
 		unsupportedCallback: nil,
-		h:                   nil,
 	}
 }
 
