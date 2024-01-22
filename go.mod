@@ -6,9 +6,10 @@ require (
 	github.com/libp2p/go-yamux/v4 v4.0.1
 	github.com/multiformats/go-multiaddr v0.12.0
 	github.com/multiformats/go-multiaddr-fmt v0.1.0
-	github.com/rambollwong/rainbowcat v0.0.0-20240117035940-0032a9bec33e
+	github.com/rambollwong/rainbowcat v0.0.0-20240122024350-dee17247b44e
 	github.com/rambollwong/rainbowlog v0.0.2
 	golang.org/x/sys v0.15.0
+	google.golang.org/protobuf v1.31.0
 )
 
 require (

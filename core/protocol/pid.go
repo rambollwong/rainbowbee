@@ -8,6 +8,10 @@ const (
 	TestingProtocolID ID = "/_testing"
 )
 
+func (i ID) String() string {
+	return string(i)
+}
+
 // ParseStringsToProtocolIDs converts a string slice to a ID slice.
 func ParseStringsToProtocolIDs(strs []string) []ID {
 	res := make([]ID, len(strs))
