@@ -25,6 +25,9 @@ type SendStreamPoolManager struct {
 	logger *rainbowlog.Logger
 }
 
+// NewSendStreamPoolManager creates a new instance of the SendStreamPoolManager type
+// that implements the manager.SendStreamPoolManager interface.
+// The returned SendStreamPoolManager can be used to manage send stream pools.
 func NewSendStreamPoolManager() manager.SendStreamPoolManager {
 	return &SendStreamPoolManager{
 		mu:    sync.RWMutex{},
@@ -44,7 +47,11 @@ func (s *SendStreamPoolManager) Reset() {
 }
 
 // AddPeerConnSendStreamPool adds a send stream pool for a specific peer connection.
-func (s *SendStreamPoolManager) AddPeerConnSendStreamPool(pid peer.ID, conn network.Connection, sendStreamPool manager.SendStreamPool) error {
+func (s *SendStreamPoolManager) AddPeerConnSendStreamPool(
+	pid peer.ID,
+	conn network.Connection,
+	sendStreamPool manager.SendStreamPool,
+) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	connM, ok := s.pools[pid]

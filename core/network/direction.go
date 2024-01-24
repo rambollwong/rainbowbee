@@ -12,10 +12,13 @@ const (
 	Outbound
 )
 
+var (
+	directions = []string{"Unknown", "Inbound", "Outbound"}
+)
+
 func (d Direction) String() string {
-	str := []string{"Unknown", "Inbound", "Outbound"}
-	if d < 0 || int(d) >= len(str) {
+	if d < 0 || int(d) >= len(directions) {
 		return "[unrecognized]"
 	}
-	return str[d]
+	return directions[d]
 }
