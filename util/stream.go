@@ -43,3 +43,13 @@ func ReadPackageData(stream network.ReceiveStream, length uint64) ([]byte, error
 	}
 	return result, nil
 }
+
+// CheckClosedConnectionWithErr checks if the network connection is closed based on the provided error.
+// It returns true if the error indicates a timeout, a closed connection error, or if the connection itself is closed.
+// Otherwise, it returns false.
+func CheckClosedConnectionWithErr(conn network.Connection, err error) bool {
+	if IsNetErrorTimeout(err) || IsConnClosedError(err) || conn.Closed() {
+		return true
+	}
+	return false
+}

@@ -11,7 +11,7 @@ type Status interface {
 	EstablishedTime() time.Time
 	Extra() map[any]any
 	SetClosed()
-	IsClosed() bool
+	Closed() bool
 }
 
 // BasicStatus stores metadata of a Connection or a Stream.
@@ -51,7 +51,7 @@ func (s *BasicStatus) SetClosed() {
 	atomic.StoreUint32(&s.closed, 1)
 }
 
-// IsClosed returns whether the connection is closed.
-func (s *BasicStatus) IsClosed() bool {
+// Closed returns whether the connection is closed.
+func (s *BasicStatus) Closed() bool {
 	return atomic.LoadUint32(&s.closed) == 1
 }
