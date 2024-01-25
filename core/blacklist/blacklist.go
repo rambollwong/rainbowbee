@@ -5,23 +5,28 @@ import (
 	"github.com/rambollwong/rainbowbee/core/peer"
 )
 
-// PeerBlackList is a blacklist implementation for net addresses or peer ids .
+// PeerBlackList is an interface for managing a blacklist of network addresses or peer IDs.
 type PeerBlackList interface {
-	// AddPeerID append a peer id to blacklist.
+	// AddPeerID adds a peer ID to the blacklist.
 	AddPeerID(pid peer.ID)
 
-	// RemovePeerID delete a peer id from blacklist. If pid not exist in blacklist, it is a no-op.
+	// RemovePeerID removes a peer ID from the blacklist.
+	// If the peer ID does not exist in the blacklist, it is a no-op.
 	RemovePeerID(pid peer.ID)
 
-	// AddIPAndPort append a string contains an ip or a net.Addr string with an ip and a port to blacklist.
-	// The string should be in the following format:
-	// "192.168.1.2:9000" or "192.168.1.2" or "[::1]:9000" or "[::1]"
+	// AddIPAndPort adds a network address or IP to the blacklist.
+	// The address should be in the format "192.168.1.2:9000" or "192.168.1.2" or "[::1]:9000" or "[::1]".
 	AddIPAndPort(ipAndPort string)
 
-	// RemoveIPAndPort delete a string contains an ip or a net.Addr string with an ip and a port from blacklist.
-	// If the string not exist in blacklist, it is a no-op.
+	// RemoveIPAndPort removes a network address or IP from the blacklist.
+	// If the address does not exist in the blacklist, it is a no-op.
 	RemoveIPAndPort(ipAndPort string)
 
-	// IsBlacklisted check whether the remote peer id or the remote net address of the connection given is blacklisted.
-	IsBlacklisted(conn network.Connection) bool
+	// BlackConn checks if the remote peer ID or network address of the given connection is blacklisted.
+	// Returns true if the connection is blacklisted, otherwise false.
+	BlackConn(conn network.Connection) bool
+
+	// BlockPID checks if a given peer ID is blacklisted.
+	// Returns true if the peer ID is blacklisted, otherwise false.
+	BlockPID(pid peer.ID) bool
 }
