@@ -48,7 +48,7 @@ type ProtocolExchanger struct {
 	logger *rainbowlog.Logger // Logger for logging events and errors.
 }
 
-func NewProtocolExchanger(h host.Host, protocolManager manager.ProtocolManager) manager.ProtocolExchanger {
+func NewProtocolExchanger(h host.Host, protocolManager manager.ProtocolManager) *ProtocolExchanger {
 	return &ProtocolExchanger{
 		host:        h,
 		protocolMgr: protocolManager,

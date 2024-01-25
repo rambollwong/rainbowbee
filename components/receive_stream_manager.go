@@ -29,12 +29,11 @@ type ReceiveStreamManager struct {
 
 // NewReceiveStreamManager creates a new instance of the ReceiveStreamManager type
 // that implements the manager.ReceiveStreamManager interface.
-// The maxCountEachPeer parameter specifies the maximum count of receive streams allowed per peer.
 // The returned ReceiveStreamManager can be used to manage receive streams for peer connections.
-func NewReceiveStreamManager(maxCountEachPeer int) manager.ReceiveStreamManager {
+func NewReceiveStreamManager() *ReceiveStreamManager {
 	return &ReceiveStreamManager{
 		mu:        sync.RWMutex{},
-		maxCount:  maxCountEachPeer,
+		maxCount:  -1,
 		countMap:  make(map[peer.ID]int),
 		streamMap: make(map[peer.ID]map[network.Connection]*types.Set[network.ReceiveStream]),
 		logger: log.Logger.SubLogger(
@@ -53,6 +52,7 @@ func (r *ReceiveStreamManager) Reset() {
 }
 
 // SetPeerReceiveStreamMaxCount sets the maximum count of receive streams for a peer.
+// If max is not a positive value, the ReceiveStreamManager will not limit the number of receive streams per peer.
 func (r *ReceiveStreamManager) SetPeerReceiveStreamMaxCount(max int) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
@@ -69,7 +69,7 @@ func (r *ReceiveStreamManager) AddPeerReceiveStream(
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	count, _ := r.countMap[pid]
-	if count >= r.maxCount {
+	if r.maxCount > 0 && count >= r.maxCount {
 		return ErrMaxReceiveStreamsCountReached
 	}
 

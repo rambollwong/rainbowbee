@@ -20,8 +20,8 @@ import (
 )
 
 const (
-	// TCPNetworkVersion is the current version of tcp network.
-	TCPNetworkVersion = "v0.0.1"
+	// NetworkVersion is the current version of tcp network.
+	NetworkVersion = "v0.0.1"
 
 	loggerLabel = "NETWORK-TCP"
 )
@@ -98,7 +98,7 @@ func (n *Network) checkTlsCfg() error {
 	if n.tlsCfg.Certificates == nil || len(n.tlsCfg.Certificates) == 0 {
 		return ErrEmptyTlsCerts
 	}
-	n.tlsCfg.NextProtos = []string{"rainbow-bee-network-tcp-" + TCPNetworkVersion}
+	n.tlsCfg.NextProtos = []string{"rainbow-bee-network-tcp-" + NetworkVersion}
 	return nil
 }
 

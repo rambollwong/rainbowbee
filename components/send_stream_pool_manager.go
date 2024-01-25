@@ -28,7 +28,7 @@ type SendStreamPoolManager struct {
 // NewSendStreamPoolManager creates a new instance of the SendStreamPoolManager type
 // that implements the manager.SendStreamPoolManager interface.
 // The returned SendStreamPoolManager can be used to manage send stream pools.
-func NewSendStreamPoolManager() manager.SendStreamPoolManager {
+func NewSendStreamPoolManager() *SendStreamPoolManager {
 	return &SendStreamPoolManager{
 		mu:    sync.RWMutex{},
 		pools: make(map[peer.ID]map[network.Connection]manager.SendStreamPool),

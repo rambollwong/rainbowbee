@@ -7,7 +7,6 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/rambollwong/rainbowbee/core/host"
 	"github.com/rambollwong/rainbowbee/core/manager"
 	"github.com/rambollwong/rainbowbee/core/network"
 	"github.com/rambollwong/rainbowbee/log"
@@ -28,7 +27,6 @@ var (
 type SendStreamPool struct {
 	mu                                       sync.RWMutex
 	once                                     sync.Once
-	host                                     host.Host
 	conn                                     network.Connection
 	initSize, maxSize, idleSize, currentSize int
 	poolC                                    chan network.SendStream
@@ -42,16 +40,15 @@ type SendStreamPool struct {
 }
 
 // NewSendStreamPool creates a new instance of SendStreamPool.
-// It initializes the SendStreamPool with the given initial size, maximum size, connection, and host.
+// It initializes the SendStreamPool with the given initial size, maximum size, connection.
 // If the initial size is greater than the maximum size, it returns an error.
-func NewSendStreamPool(initSize, maxSize int, conn network.Connection, host host.Host) (manager.SendStreamPool, error) {
+func NewSendStreamPool(initSize, maxSize int, conn network.Connection) (*SendStreamPool, error) {
 	if initSize > maxSize {
 		return nil, ErrInitSizeTooBig
 	}
 	return &SendStreamPool{
 		mu:               sync.RWMutex{},
 		once:             sync.Once{},
-		host:             host,
 		conn:             conn,
 		initSize:         initSize,
 		maxSize:          maxSize,

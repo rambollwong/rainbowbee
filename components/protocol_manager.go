@@ -31,7 +31,7 @@ type ProtocolManager struct {
 // NewProtocolManager creates a new instance of ProtocolManager with the provided ProtocolBook.
 // It initializes the internal fields of the ProtocolManager
 // and returns a value that implements the manager.ProtocolManager interface.
-func NewProtocolManager(protocolBook store.ProtocolBook) manager.ProtocolManager {
+func NewProtocolManager(protocolBook store.ProtocolBook) *ProtocolManager {
 	return &ProtocolManager{
 		mu:                  sync.RWMutex{},
 		handlers:            make(map[protocol.ID]handler.MsgPayloadHandler),

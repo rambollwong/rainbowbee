@@ -7,6 +7,9 @@ import (
 	"github.com/rambollwong/rainbowbee/core/peer"
 )
 
+// SendStreamPoolBuilder is a function type that builds a SendStreamPool for a given network connection.
+type SendStreamPoolBuilder func(conn network.Connection) (SendStreamPool, error)
+
 // SendStreamPool is a pool that stores send streams.
 type SendStreamPool interface {
 	io.Closer

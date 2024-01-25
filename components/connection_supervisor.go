@@ -40,7 +40,7 @@ type ConnectionSupervisor struct {
 }
 
 // NewConnectionSupervisor creates a new instance of ConnectionSupervisor.
-func NewConnectionSupervisor(h host.Host, tryTimes int) manager.ConnectionSupervisor {
+func NewConnectionSupervisor(h host.Host, tryTimes int) *ConnectionSupervisor {
 	// If tryTimes is less than or equal to 0, set it to the default value.
 	if tryTimes <= 0 {
 		tryTimes = DefaultTryTimes

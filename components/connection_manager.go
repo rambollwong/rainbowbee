@@ -10,6 +10,7 @@ import (
 	"github.com/rambollwong/rainbowbee/core/manager"
 	"github.com/rambollwong/rainbowbee/core/network"
 	"github.com/rambollwong/rainbowbee/core/peer"
+	"github.com/rambollwong/rainbowbee/log"
 	"github.com/rambollwong/rainbowcat/types"
 	"github.com/rambollwong/rainbowlog"
 )
@@ -83,8 +84,29 @@ type LevelConnectionManager struct {
 	logger *rainbowlog.Logger
 }
 
+func NewLevelConnectionManager(host host.Host) *LevelConnectionManager {
+	return &LevelConnectionManager{
+		mu:                            sync.RWMutex{},
+		maxCountOfPeers:               DefaultMaxCountOfPeers,
+		maxCountOfConnectionsEachPeer: DefaultMaxCountOfConnectionsEachPeer,
+		strategy:                      DefaultEliminationStrategy,
+		highLevelPeersLock:            sync.RWMutex{},
+		highLevelPeers:                types.NewSet[peer.ID](),
+		highLevelConn:                 make([]*peerConnections, 0, 10),
+		lowLevelConn:                  make([]*peerConnections, 0, 10),
+		h:                             host,
+		expandingC:                    make(chan struct{}, 1),
+		eliminatePeers:                types.NewSet[peer.ID](),
+		logger: log.Logger.SubLogger(
+			rainbowlog.WithLabels(log.DefaultLoggerLabel, "LEVEL-CONNECTION-MANAGER"),
+		),
+	}
+}
+
 // SetStrategy sets the elimination strategy for the LevelConnectionManager.
 func (l *LevelConnectionManager) SetStrategy(strategy EliminationStrategy) {
+	l.mu.Lock()
+	defer l.mu.Unlock()
 	switch strategy {
 	case EliminationStrategyRandom, EliminationStrategyFIFO, EliminationStrategyLIFO:
 		l.strategy = strategy
@@ -100,6 +122,8 @@ func (l *LevelConnectionManager) SetStrategy(strategy EliminationStrategy) {
 
 // SetMaxCountOfPeers sets the maximum count of peers for the LevelConnectionManager.
 func (l *LevelConnectionManager) SetMaxCountOfPeers(max int) {
+	l.mu.Lock()
+	defer l.mu.Unlock()
 	if max < 1 {
 		l.logger.Warn().
 			Msg("wrong max count of peers set, use default max count.").
@@ -113,6 +137,8 @@ func (l *LevelConnectionManager) SetMaxCountOfPeers(max int) {
 
 // SetMaxCountOfConnectionsEachPeer sets the maximum count of connections allowed for each peer in the LevelConnectionManager.
 func (l *LevelConnectionManager) SetMaxCountOfConnectionsEachPeer(max int) {
+	l.mu.Lock()
+	defer l.mu.Unlock()
 	if max < 1 {
 		l.logger.Warn().
 			Msg("wrong max count of connections each peer, use default max count").
