@@ -3,6 +3,7 @@ module github.com/rambollwong/rainbowbee
 go 1.19
 
 require (
+	github.com/decred/dcrd/dcrec/secp256k1/v4 v4.2.0
 	github.com/libp2p/go-yamux/v4 v4.0.1
 	github.com/multiformats/go-multiaddr v0.12.0
 	github.com/multiformats/go-multiaddr-fmt v0.1.0

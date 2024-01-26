@@ -1,0 +1,1 @@
+The content in this package is implemented with reference to [go-libp2p-core](https://github.com/libp2p/go-libp2p/tree/master/core).
