@@ -365,7 +365,7 @@ Loop:
 		}
 		n.logger.Debug().
 			Msg("listener accept a connection").
-			Str("remote address", c.RemoteAddr().String()).
+			Str("remote_address", c.RemoteAddr().String()).
 			Done()
 
 		// handle new connection
@@ -405,7 +405,7 @@ func (n *Network) Listen(ctx context.Context, addresses ...ma.Multiaddr) error {
 
 	n.once.Do(func() {
 		n.listening = true
-		n.logger.Info().Str("local pid", n.localPID.String()).Done()
+		n.logger.Info().Str("local_pid", n.localPID.String()).Done()
 		if n.tlsEnabled {
 			n.logger.Info().Str("tls", "enabled").Done()
 		} else {

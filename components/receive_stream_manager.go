@@ -90,7 +90,7 @@ func (r *ReceiveStreamManager) AddPeerReceiveStream(
 	}
 	r.logger.Debug().Msg("receive stream added").
 		Str("pid", pid.String()).
-		Str("conn-remote-addr", conn.RemoteAddr().String()).
+		Str("conn_remote_addr", conn.RemoteAddr().String()).
 		Done()
 	return nil
 }
@@ -128,7 +128,7 @@ func (r *ReceiveStreamManager) RemovePeerReceiveStream(
 	}
 	r.logger.Debug().Msg("receive stream removed").
 		Str("pid", pid.String()).
-		Str("conn-remote-addr", conn.RemoteAddr().String()).
+		Str("conn_remote_addr", conn.RemoteAddr().String()).
 		Done()
 	return nil
 }
@@ -171,7 +171,7 @@ func (r *ReceiveStreamManager) ClosePeerReceiveStreams(pid peer.ID, conn network
 	}
 	r.logger.Debug().Msg("all receive streams are closed.").
 		Str("pid", pid.String()).
-		Str("conn-remote-addr", conn.RemoteAddr().String()).
+		Str("conn_remote_addr", conn.RemoteAddr().String()).
 		Done()
 	return nil
 }

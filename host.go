@@ -621,7 +621,7 @@ func (h *Host) pushProtocolsToOthers() {
 			if err := h.protocolExr.PushProtocols(pid); err != nil {
 				h.logger.Warn().
 					Msg("failed to push protocols.").
-					Str("remote-pid", pid.String()).
+					Str("remote_pid", pid.String()).
 					Err(err).
 					Done()
 			}
@@ -724,16 +724,16 @@ func (h *Host) handleClosingConn(conn network.Connection) {
 	}
 
 	h.logger.Info().Msg("a connection disestablished.").
-		Str("remote-pid", conn.RemotePeerID().String()).
-		Str("remote-addr", conn.RemoteAddr().String()).
+		Str("remote_pid", conn.RemotePeerID().String()).
+		Str("remote_addr", conn.RemoteAddr().String()).
 		Str("direction", conn.Direction().String()).
 		Done()
 
 	// Check if the remote peer is disconnected.
 	if !h.connMgr.Connected(rPID) {
 		h.logger.Info().Msg("peer disconnected.").
-			Str("remote-pid", conn.RemotePeerID().String()).
-			Str("remote-addr", conn.RemoteAddr().String()).
+			Str("remote_pid", conn.RemotePeerID().String()).
+			Str("remote_addr", conn.RemoteAddr().String()).
 			Done()
 
 		// Notify the connection channel about the disconnection.
@@ -742,7 +742,7 @@ func (h *Host) handleClosingConn(conn network.Connection) {
 		// Clean up protocols associated with the disconnected peer.
 		if err := h.protocolMgr.CleanPeer(rPID); err != nil {
 			h.logger.Error().Msg("failed to clean protocol from manager.").
-				Str("remote-pid", rPID.String()).
+				Str("remote_pid", rPID.String()).
 				Err(err).
 				Done()
 		}
@@ -751,8 +751,8 @@ func (h *Host) handleClosingConn(conn network.Connection) {
 	// Remove the address associated with the connection from the peer store.
 	if err := h.store.RemoveAddress(rPID, conn.RemoteAddr()); err != nil {
 		h.logger.Error().Msg("failed to remove address from peer store.").
-			Str("remote-pid", rPID.String()).
-			Str("remote-addr", conn.RemoteAddr().String()).
+			Str("remote_pid", rPID.String()).
+			Str("remote_addr", conn.RemoteAddr().String()).
 			Err(err).
 			Done()
 	}
@@ -760,8 +760,8 @@ func (h *Host) handleClosingConn(conn network.Connection) {
 	// Remove the connection and close the associated send stream pool.
 	if err := h.sendStreamPoolMgr.RemovePeerConnAndCloseSendStreamPool(rPID, conn); err != nil {
 		h.logger.Error().Msg("failed to clean all send stream of connection from send stream pool manager.").
-			Str("remote-pid", rPID.String()).
-			Str("remote-addr", conn.RemoteAddr().String()).
+			Str("remote_pid", rPID.String()).
+			Str("remote_addr", conn.RemoteAddr().String()).
 			Err(err).
 			Done()
 	}
@@ -769,8 +769,8 @@ func (h *Host) handleClosingConn(conn network.Connection) {
 	// Close all receive streams associated with the connection.
 	if err := h.receiveStreamMgr.ClosePeerReceiveStreams(rPID, conn); err != nil {
 		h.logger.Error().Msg("failed to clean all receive stream of connection from receive stream manager.").
-			Str("remote-pid", rPID.String()).
-			Str("remote-addr", conn.RemoteAddr().String()).
+			Str("remote_pid", rPID.String()).
+			Str("remote_addr", conn.RemoteAddr().String()).
 			Err(err).
 			Done()
 	}
@@ -791,7 +791,7 @@ func (h *Host) handleReceiveStreamData(dataBz []byte, pid peer.ID) {
 		// If unmarshaling fails, log a warning message and drop the payload.
 		h.logger.Warn().
 			Msg("failed to unmarshal payload package, drop it.").
-			Str("remote-pid", pid.String()).
+			Str("remote_pid", pid.String()).
 			Err(err).
 			Done()
 		return
@@ -805,7 +805,7 @@ func (h *Host) handleReceiveStreamData(dataBz []byte, pid peer.ID) {
 		h.logger.Warn().
 			Msg("payload handler not found, drop the payload.").
 			Str("protocol", pkg.ProtocolID().String()).
-			Str("remote-pid", pid.String()).
+			Str("remote_pid", pid.String()).
 			Done()
 	}
 }
@@ -865,8 +865,8 @@ Loop:
 		if err := h.receiveStreamMgr.RemovePeerReceiveStream(rPID, receiveStream.Conn(), receiveStream); err != nil {
 			h.logger.Debug().
 				Msg("failed to remove receive stream from the manager.").
-				Str("remote-pid", rPID.String()).
-				Str("remote-addr", receiveStream.Conn().RemoteAddr().String()).
+				Str("remote_pid", rPID.String()).
+				Str("remote_addr", receiveStream.Conn().RemoteAddr().String()).
 				Err(err).
 				Done()
 			return
@@ -875,8 +875,8 @@ Loop:
 		// Log a warning message about the failure to read data from the receive stream.
 		h.logger.Warn().
 			Msg("failed to read data from the receive stream.").
-			Str("remote-pid", rPID.String()).
-			Str("remote-addr", receiveStream.Conn().RemoteAddr().String()).
+			Str("remote_pid", rPID.String()).
+			Str("remote_addr", receiveStream.Conn().RemoteAddr().String()).
 			Err(err).
 			Done()
 	}
@@ -890,8 +890,8 @@ func (h *Host) handleReceiveStream(receiveStream network.ReceiveStream) {
 	// Add the receive stream to the receive stream manager.
 	if err := h.receiveStreamMgr.AddPeerReceiveStream(rPID, receiveStream.Conn(), receiveStream); err != nil {
 		h.logger.Error().Msg("failed to add receive stream to the manager.").
-			Str("remote-pid", rPID.String()).
-			Str("remote-addr", receiveStream.Conn().RemoteAddr().String()).
+			Str("remote_pid", rPID.String()).
+			Str("remote_addr", receiveStream.Conn().RemoteAddr().String()).
 			Err(err).
 			Done()
 		// Close the receive stream.
@@ -927,7 +927,7 @@ Loop:
 			// Log a warning message about the failure to accept a receive stream.
 			h.logger.Warn().
 				Msg("failed to accept a receive stream").
-				Str("remote-addr", conn.RemoteAddr().String()).
+				Str("remote_addr", conn.RemoteAddr().String()).
 				Err(err).
 				Done()
 			continue
@@ -949,8 +949,8 @@ func (h *Host) handleNewConnection(conn network.Connection) (bool, error) {
 	// Check if the connection is blacklisted.
 	if h.blacklist.BlackConn(conn) {
 		h.logger.Info().Msg("new connection is blacklisted.").
-			Str("remote-pid", conn.RemotePeerID().String()).
-			Str("remote-addr", conn.RemoteAddr().String()).
+			Str("remote_pid", conn.RemotePeerID().String()).
+			Str("remote_addr", conn.RemoteAddr().String()).
 			Done()
 		return false, nil
 	}
@@ -965,7 +965,7 @@ func (h *Host) handleNewConnection(conn network.Connection) (bool, error) {
 	if !h.connMgr.Allowed(rPID) {
 		h.logger.Info().
 			Msg("new connection is rejected by connection manager, close it.").
-			Str("remote-pid", rPID.String()).
+			Str("remote_pid", rPID.String()).
 			Done()
 		return false, nil
 	}
@@ -984,16 +984,16 @@ func (h *Host) handleNewConnection(conn network.Connection) (bool, error) {
 		if err != nil {
 			h.logger.Warn().
 				Msg("failed to exchange protocols, close the connection.").
-				Str("local-pid", conn.LocalPeerID().String()).
-				Str("remote-pid", conn.RemotePeerID().String()).
+				Str("local_pid", conn.LocalPeerID().String()).
+				Str("remote_pid", conn.RemotePeerID().String()).
 				Err(err).
 				Done()
 			_ = conn.Close()
 			return false, err
 		}
 		h.logger.Info().Msg("protocols exchanged.").
-			Str("local-pid", conn.LocalPeerID().String()).
-			Str("remote-pid", conn.RemotePeerID().String()).
+			Str("local_pid", conn.LocalPeerID().String()).
+			Str("remote_pid", conn.RemotePeerID().String()).
 			Strs("protocols", catutil.SliceTransformType(rProtocols, func(_ int, item protocol.ID) string {
 				return item.String()
 			})...).
@@ -1010,9 +1010,9 @@ func (h *Host) handleNewConnection(conn network.Connection) (bool, error) {
 	if err != nil {
 		h.logger.Warn().
 			Msg("failed to initialize streams, close the connection.").
-			Str("local-pid", conn.LocalPeerID().String()).
-			Str("remote-pid", conn.RemotePeerID().String()).
-			Str("remote-addr", conn.RemoteAddr().String()).
+			Str("local_pid", conn.LocalPeerID().String()).
+			Str("remote_pid", conn.RemotePeerID().String()).
+			Str("remote_addr", conn.RemoteAddr().String()).
 			Err(err).
 			Done()
 		_ = conn.Close()
@@ -1023,9 +1023,9 @@ func (h *Host) handleNewConnection(conn network.Connection) (bool, error) {
 	if err != nil {
 		h.logger.Error().
 			Msg("failed to add send stream pool to the manager, close the connection.").
-			Str("local-pid", conn.LocalPeerID().String()).
-			Str("remote-pid", conn.RemotePeerID().String()).
-			Str("remote-addr", conn.RemoteAddr().String()).
+			Str("local_pid", conn.LocalPeerID().String()).
+			Str("remote_pid", conn.RemotePeerID().String()).
+			Str("remote_addr", conn.RemoteAddr().String()).
 			Err(err).
 			Done()
 		_ = conn.Close()
@@ -1034,8 +1034,8 @@ func (h *Host) handleNewConnection(conn network.Connection) (bool, error) {
 
 	if !h.connMgr.AddPeerConnection(rPID, conn) {
 		h.logger.Debug().Msg("failed to add connection to the manager, close the connection.").
-			Str("local-pid", conn.LocalPeerID().String()).
-			Str("remote-pid", conn.RemotePeerID().String()).
+			Str("local_pid", conn.LocalPeerID().String()).
+			Str("remote_pid", conn.RemotePeerID().String()).
 			Done()
 		_ = conn.Close()
 		return false, err
@@ -1045,8 +1045,8 @@ func (h *Host) handleNewConnection(conn network.Connection) (bool, error) {
 		err = h.protocolMgr.SetSupportedProtocolsOfPeer(rPID, rProtocols)
 		if err != nil {
 			h.logger.Debug().Msg("failed to set supported protocols to the manager, close the connection.").
-				Str("local-pid", conn.LocalPeerID().String()).
-				Str("remote-pid", conn.RemotePeerID().String()).
+				Str("local_pid", conn.LocalPeerID().String()).
+				Str("remote_pid", conn.RemotePeerID().String()).
 				Done()
 			_ = conn.Close()
 			return false, err
@@ -1054,7 +1054,7 @@ func (h *Host) handleNewConnection(conn network.Connection) (bool, error) {
 		if myProtocolsLength != len(h.protocolMgr.SupportedProtocolsOfPeer(h.ID())) {
 			go func() {
 				err := h.protocolExr.PushProtocols(rPID)
-				h.logger.Info().Msg("re-push protocols to other").Str("other", rPID.String()).Err(err).Done()
+				h.logger.Info().Msg("re_push protocols to other").Str("other", rPID.String()).Err(err).Done()
 			}()
 		}
 	}
@@ -1066,9 +1066,9 @@ func (h *Host) handleNewConnection(conn network.Connection) (bool, error) {
 	if err = h.store.AddAddress(rPID, conn.RemoteAddr()); err != nil {
 		h.logger.Debug().
 			Msg("failed to add address to the peer store, close the connection.").
-			Str("local-pid", conn.LocalPeerID().String()).
-			Str("remote-pid", conn.RemotePeerID().String()).
-			Str("remote-addr", conn.RemoteAddr().String()).
+			Str("local_pid", conn.LocalPeerID().String()).
+			Str("remote_pid", conn.RemotePeerID().String()).
+			Str("remote_addr", conn.RemoteAddr().String()).
 			Err(err).
 			Done()
 		_ = conn.Close()
@@ -1076,16 +1076,16 @@ func (h *Host) handleNewConnection(conn network.Connection) (bool, error) {
 	}
 
 	h.logger.Info().Msg("new connection established.").
-		Str("remote-pid", conn.RemotePeerID().String()).
-		Str("remote-addr", conn.RemoteAddr().String()).
+		Str("remote_pid", conn.RemotePeerID().String()).
+		Str("remote_addr", conn.RemoteAddr().String()).
 		Str("direction", conn.Direction().String()).
 		Done()
 
 	if exchangeProtocol {
 		// This is the first time the other party connects.
 		h.logger.Info().Msg("peer connected.").
-			Str("remote-pid", conn.RemotePeerID().String()).
-			Str("remote-addr", conn.RemoteAddr().String()).
+			Str("remote_pid", conn.RemotePeerID().String()).
+			Str("remote_addr", conn.RemoteAddr().String()).
 			Done()
 		h.notifyConnC <- conn
 	}
@@ -1136,14 +1136,14 @@ func (h *Host) dial(pid peer.ID, addr ma.Multiaddr) (network.Connection, error) 
 			addr = address
 			h.logger.Info().
 				Msg("trying to dial.").
-				Str("remote-pid", pid.String()).
-				Str("remote-addr", addr.String()).
+				Str("remote_pid", pid.String()).
+				Str("remote_addr", addr.String()).
 				Done()
 			conn, err := h.nw.Dial(h.ctx, addr)
 			if err != nil {
 				h.logger.Info().Msg("failed to dial.").
-					Str("remote-pid", pid.String()).
-					Str("remote-addr", addr.String()).
+					Str("remote_pid", pid.String()).
+					Str("remote_addr", addr.String()).
 					Err(err).
 					Done()
 				continue
@@ -1154,8 +1154,8 @@ func (h *Host) dial(pid peer.ID, addr ma.Multiaddr) (network.Connection, error) 
 		// Dial the provided address directly.
 		h.logger.Info().
 			Msg("trying to dial.").
-			Str("remote-pid", pid.String()).
-			Str("remote-addr", addr.String()).
+			Str("remote_pid", pid.String()).
+			Str("remote_addr", addr.String()).
 			Done()
 		conn, err := h.nw.Dial(h.ctx, addr)
 		if err == nil {
@@ -1165,8 +1165,8 @@ func (h *Host) dial(pid peer.ID, addr ma.Multiaddr) (network.Connection, error) 
 
 	// All dial attempts failed.
 	h.logger.Info().Msg("all dial failed.").
-		Str("remote-pid", pid.String()).
-		Str("remote-addr", addr.String()).
+		Str("remote_pid", pid.String()).
+		Str("remote_addr", addr.String()).
 		Done()
 	return nil, ErrAllDialFailed
 }

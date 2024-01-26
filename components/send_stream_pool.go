@@ -91,8 +91,8 @@ func (s *SendStreamPool) InitStreams() (err error) {
 		}
 		s.logger.Info().
 			Msg("send streams initialized.").
-			Int("init-size", s.initSize).
-			Str("remote", s.conn.RemotePeerID().String()).
+			Int("init_size", s.initSize).
+			Str("remote_pid", s.conn.RemotePeerID().String()).
 			Done()
 		go s.expandLoop()
 	})
@@ -257,7 +257,7 @@ func (s *SendStreamPool) expandStream() {
 		Int("expand", expandSize).
 		Int("max", s.maxSize).
 		Int("current", s.currentSize).
-		Str("remote", s.conn.RemotePeerID().String()).
+		Str("remote_pid", s.conn.RemotePeerID().String()).
 		Done()
 	for i := 0; i < expandSize; i++ {
 		err := s.openSendStream()
@@ -265,7 +265,7 @@ func (s *SendStreamPool) expandStream() {
 			s.logger.Error().
 				Msg("failed to expand send streams, connection closed.").
 				Uint64("seq", s.seq).
-				Str("remote", s.conn.RemotePeerID().String()).
+				Str("remote_pid", s.conn.RemotePeerID().String()).
 				Err(err).
 				Done()
 			_ = s.close()
@@ -274,7 +274,7 @@ func (s *SendStreamPool) expandStream() {
 		s.logger.Error().
 			Msg("failed to expand send streams.").
 			Uint64("seq", s.seq).
-			Str("remote", s.conn.RemotePeerID().String()).
+			Str("remote_pid", s.conn.RemotePeerID().String()).
 			Err(err).
 			Done()
 		continue
@@ -285,7 +285,7 @@ func (s *SendStreamPool) expandStream() {
 		Int("expand", expandSize).
 		Int("max", s.maxSize).
 		Int("current", s.currentSize).
-		Str("remote", s.conn.RemotePeerID().String()).
+		Str("remote_pid", s.conn.RemotePeerID().String()).
 		Done()
 	s.triggerExpand()
 }

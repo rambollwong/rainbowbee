@@ -210,14 +210,14 @@ func (p *ProtocolExchanger) PushProtocols(pid peer.ID) error {
 
 	// Send PUSH request to the other peer.
 	if err := p.sendProtocolsToOther(pid, payload.ProtocolExchangerPayload_PUSH); err != nil {
-		p.logger.Debug().Msg("failed to send PUSH to other.").Str("remote", pid.String()).Err(err).Done()
+		p.logger.Debug().Msg("failed to send PUSH to other.").Str("remote_pid", pid.String()).Err(err).Done()
 		return err
 	}
 
 	// Wait for the PUSH operation to complete or timeout.
 	select {
 	case <-signalC:
-		p.logger.Info().Msg("push protocols success.").Str("remote", pid.String()).Done()
+		p.logger.Info().Msg("push protocols success.").Str("remote_pid", pid.String()).Done()
 		return nil
 	case <-time.After(exchangeTimeout):
 		return ErrPushProtocolTimeout
@@ -309,7 +309,7 @@ func (p *ProtocolExchanger) receiveExchangePayload(
 	if err != nil {
 		p.logger.Debug().Msg("failed to read package length.").
 			Str("dir", receiveStream.Conn().Direction().String()).
-			Str("remote", receiveStream.Conn().RemotePeerID().String()).
+			Str("remote_pid", receiveStream.Conn().RemotePeerID().String()).
 			Err(err).
 			Done()
 		return nil, err
@@ -320,7 +320,7 @@ func (p *ProtocolExchanger) receiveExchangePayload(
 	if err != nil {
 		p.logger.Debug().Msg("failed to read package data.").
 			Str("dir", receiveStream.Conn().Direction().String()).
-			Str("remote", receiveStream.Conn().RemotePeerID().String()).
+			Str("remote_pid", receiveStream.Conn().RemotePeerID().String()).
 			Err(err).
 			Done()
 		return nil, err
@@ -331,7 +331,7 @@ func (p *ProtocolExchanger) receiveExchangePayload(
 	if err = payloadPkg.Unmarshal(dataBz); err != nil {
 		p.logger.Debug().Msg("failed to unmarshal payload package.").
 			Str("dir", receiveStream.Conn().Direction().String()).
-			Str("remote", receiveStream.Conn().RemotePeerID().String()).
+			Str("remote_pid", receiveStream.Conn().RemotePeerID().String()).
 			Err(err).
 			Done()
 		return nil, err
@@ -347,7 +347,7 @@ func (p *ProtocolExchanger) receiveExchangePayload(
 	if err = proto.Unmarshal(payloadPkg.Payload(), exchangerPayload); err != nil {
 		p.logger.Debug().Msg("failed to unmarshal protocol exchanger payload package.").
 			Str("dir", receiveStream.Conn().Direction().String()).
-			Str("remote", receiveStream.Conn().RemotePeerID().String()).
+			Str("remote_pid", receiveStream.Conn().RemotePeerID().String()).
 			Err(err).
 			Done()
 		return nil, err
