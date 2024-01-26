@@ -5,6 +5,7 @@ import (
 	"sync"
 
 	"github.com/rambollwong/rainbowbee/core/handler"
+	"github.com/rambollwong/rainbowbee/core/host"
 	"github.com/rambollwong/rainbowbee/core/manager"
 	"github.com/rambollwong/rainbowbee/core/peer"
 	"github.com/rambollwong/rainbowbee/core/protocol"
@@ -39,6 +40,10 @@ func NewProtocolManager(protocolBook store.ProtocolBook) *ProtocolManager {
 		supportedCallback:   nil,
 		unsupportedCallback: nil,
 	}
+}
+
+func (p *ProtocolManager) AttachHost(_ host.Host) {
+
 }
 
 // RegisterMsgPayloadHandler registers a protocol and associates a handler.MsgPayloadHandler with it.

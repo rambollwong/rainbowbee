@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"github.com/rambollwong/rainbowbee/components/payload"
-	"github.com/rambollwong/rainbowbee/core/handler"
 	"github.com/rambollwong/rainbowbee/core/host"
 	"github.com/rambollwong/rainbowbee/core/manager"
 	"github.com/rambollwong/rainbowbee/core/network"
@@ -48,9 +47,9 @@ type ProtocolExchanger struct {
 	logger *rainbowlog.Logger // Logger for logging events and errors.
 }
 
-func NewProtocolExchanger(h host.Host, protocolManager manager.ProtocolManager) *ProtocolExchanger {
+func NewProtocolExchanger(protocolManager manager.ProtocolManager) *ProtocolExchanger {
 	return &ProtocolExchanger{
-		host:        h,
+		host:        nil,
 		protocolMgr: protocolManager,
 		mu:          sync.RWMutex{},
 		pushSignalC: make(map[peer.ID]chan struct{}),
@@ -60,93 +59,95 @@ func NewProtocolExchanger(h host.Host, protocolManager manager.ProtocolManager) 
 	}
 }
 
+func (p *ProtocolExchanger) AttachHost(h host.Host) {
+	p.host = h
+}
+
 // ProtocolID returns the protocol ID of the ProtocolExchanger.
 func (p *ProtocolExchanger) ProtocolID() protocol.ID {
 	return ProtocolExchangerProtocolID
 }
 
-// Handle returns the message payload handler for the ProtocolExchanger.
-func (p *ProtocolExchanger) Handle() handler.MsgPayloadHandler {
-	return func(senderPID peer.ID, msgPayload []byte) {
-		msg := &payload.ProtocolExchangerPayload{}
+// Handle is the message payload handler of the exchanger service.
+func (p *ProtocolExchanger) Handle(senderPID peer.ID, msgPayload []byte) {
+	msg := &payload.ProtocolExchangerPayload{}
 
-		// Unmarshal the received message payload into the ProtocolExchangerPayload struct.
-		if err := proto.Unmarshal(msgPayload, msg); err != nil {
+	// Unmarshal the received message payload into the ProtocolExchangerPayload struct.
+	if err := proto.Unmarshal(msgPayload, msg); err != nil {
+		p.logger.Error().
+			Msg("failed to unmarshal protocol exchanger payload.").
+			Str("sender", senderPID.String()).
+			Err(err).
+			Done()
+		return
+	}
+
+	// Check if the sender's peer ID matches the one specified in the payload.
+	if senderPID.String() != msg.Pid {
+		p.logger.Warn().
+			Msg("sender pid mismatch.").
+			Str("sender", senderPID.String()).
+			Str("payload pid", msg.Pid).
+			Done()
+		return
+	}
+
+	p.logger.Info().
+		Msg("protocol exchanger payload received.").
+		Str("type", msg.PayloadType.String()).
+		Str("sender", msg.Pid).
+		Strs("protocols", msg.Protocols...).
+		Done()
+
+	// Convert the string array of protocols to protocol.ID array.
+	protocols := util.ConvertStrArrToProtocolIDs(msg.Protocols...)
+
+	// Handle the payload based on its type.
+	switch msg.PayloadType {
+	case payload.ProtocolExchangerPayload_PUSH:
+		// Receive PUSH
+
+		// Set the supported protocols of the sender peer.
+		if err := p.protocolMgr.SetSupportedProtocolsOfPeer(senderPID, protocols); err != nil {
 			p.logger.Error().
-				Msg("failed to unmarshal protocol exchanger payload.").
+				Msg("failed to set supported protocols of peer.").
 				Str("sender", senderPID.String()).
 				Err(err).
 				Done()
 			return
 		}
 
-		// Check if the sender's peer ID matches the one specified in the payload.
-		if senderPID.String() != msg.Pid {
-			p.logger.Warn().
-				Msg("sender pid mismatch.").
+		// Send PUSH_OK response to the sender.
+		if err := p.sendProtocolsToOther(senderPID, payload.ProtocolExchangerPayload_PUSH_OK); err != nil {
+			p.logger.Error().
+				Msg("failed to send PUSH_OK to sender.").
 				Str("sender", senderPID.String()).
-				Str("payload pid", msg.Pid).
+				Err(err).
 				Done()
 			return
 		}
 
-		p.logger.Info().
-			Msg("protocol exchanger payload received.").
-			Str("type", msg.PayloadType.String()).
-			Str("sender", msg.Pid).
-			Strs("protocols", msg.Protocols...).
-			Done()
+	case payload.ProtocolExchangerPayload_PUSH_OK:
+		// Receive PUSH_OK
 
-		// Convert the string array of protocols to protocol.ID array.
-		protocols := util.ConvertStrArrToProtocolIDs(msg.Protocols...)
+		// Retrieve the push signal channel associated with the sender peer.
+		p.mu.RLock()
+		pushSignalC, ok := p.pushSignalC[senderPID]
+		p.mu.RUnlock()
 
-		// Handle the payload based on its type.
-		switch msg.PayloadType {
-		case payload.ProtocolExchangerPayload_PUSH:
-			// Receive PUSH
+		// Signal the push signal channel if it exists.
+		if ok {
+			pushSignalC <- struct{}{}
+		}
 
-			// Set the supported protocols of the sender peer.
-			if err := p.protocolMgr.SetSupportedProtocolsOfPeer(senderPID, protocols); err != nil {
-				p.logger.Error().
-					Msg("failed to set supported protocols of peer.").
-					Str("sender", senderPID.String()).
-					Err(err).
-					Done()
-				return
-			}
-
-			// Send PUSH_OK response to the sender.
-			if err := p.sendProtocolsToOther(senderPID, payload.ProtocolExchangerPayload_PUSH_OK); err != nil {
-				p.logger.Error().
-					Msg("failed to send PUSH_OK to sender.").
-					Str("sender", senderPID.String()).
-					Err(err).
-					Done()
-				return
-			}
-
-		case payload.ProtocolExchangerPayload_PUSH_OK:
-			// Receive PUSH_OK
-
-			// Retrieve the push signal channel associated with the sender peer.
-			p.mu.RLock()
-			pushSignalC, ok := p.pushSignalC[senderPID]
-			p.mu.RUnlock()
-
-			// Signal the push signal channel if it exists.
-			if ok {
-				pushSignalC <- struct{}{}
-			}
-
-			// Set the supported protocols of the sender peer.
-			if err := p.protocolMgr.SetSupportedProtocolsOfPeer(senderPID, protocols); err != nil {
-				p.logger.Error().
-					Msg("failed to set supported protocols of peer.").
-					Str("sender", senderPID.String()).
-					Err(err).
-					Done()
-				return
-			}
+		// Set the supported protocols of the sender peer.
+		if err := p.protocolMgr.SetSupportedProtocolsOfPeer(senderPID, protocols); err != nil {
+			p.logger.Error().
+				Msg("failed to set supported protocols of peer.").
+				Str("sender", senderPID.String()).
+				Err(err).
+				Done()
+			return
 		}
 	}
 }

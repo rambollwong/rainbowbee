@@ -16,8 +16,8 @@ func (i ID) String() string {
 // It determines which peer should be saved when a conflict is found between two peers.
 // The function returns true if the weight of our ID is higher than the other ID's weight.
 func (i ID) WeightCompare(other ID) bool {
-	l := string(i)
-	r := string(other)
+	l := i
+	r := other
 	for i := 0; i < len(l) && i < len(r); i++ {
 		if l[i] != r[i] {
 			return l[i] > r[i]

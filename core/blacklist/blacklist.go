@@ -26,7 +26,7 @@ type PeerBlackList interface {
 	// Returns true if the connection is blacklisted, otherwise false.
 	BlackConn(conn network.Connection) bool
 
-	// BlockPID checks if a given peer ID is blacklisted.
+	// BlackPID checks if a given peer ID is blacklisted.
 	// Returns true if the peer ID is blacklisted, otherwise false.
-	BlockPID(pid peer.ID) bool
+	BlackPID(pid peer.ID) bool
 }

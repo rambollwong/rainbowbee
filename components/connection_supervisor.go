@@ -40,7 +40,7 @@ type ConnectionSupervisor struct {
 }
 
 // NewConnectionSupervisor creates a new instance of ConnectionSupervisor.
-func NewConnectionSupervisor(h host.Host, tryTimes int) *ConnectionSupervisor {
+func NewConnectionSupervisor(tryTimes int) *ConnectionSupervisor {
 	// If tryTimes is less than or equal to 0, set it to the default value.
 	if tryTimes <= 0 {
 		tryTimes = DefaultTryTimes
@@ -48,7 +48,7 @@ func NewConnectionSupervisor(h host.Host, tryTimes int) *ConnectionSupervisor {
 	cs := &ConnectionSupervisor{
 		mu:                        sync.RWMutex{},
 		once:                      sync.Once{},
-		host:                      h,
+		host:                      nil,
 		necessaryPeer:             make(map[peer.ID]ma.Multiaddr),
 		watcherTimer:              nil,
 		signalC:                   make(chan struct{}, 1),
@@ -63,6 +63,12 @@ func NewConnectionSupervisor(h host.Host, tryTimes int) *ConnectionSupervisor {
 	}
 	cs.hostNotifiee.OnPeerDisconnectedFunc = cs.NoticePeerDisconnected
 	return cs
+}
+
+func (c *ConnectionSupervisor) AttachHost(h host.Host) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.host = h
 }
 
 // checkConn checks the connection status of the necessary peers and performs dialing if needed.

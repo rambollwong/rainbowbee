@@ -4,6 +4,7 @@ import (
 	"io"
 
 	"github.com/rambollwong/rainbowbee/core"
+	"github.com/rambollwong/rainbowbee/core/host"
 	"github.com/rambollwong/rainbowbee/core/network"
 	"github.com/rambollwong/rainbowbee/core/peer"
 
@@ -11,6 +12,7 @@ import (
 )
 
 type ConnectionManager interface {
+	host.Components
 	io.Closer
 
 	// AddPeerConnection adds a connection to the peer identified by pid.
@@ -53,6 +55,7 @@ type ConnectionManager interface {
 // If a necessary peer is not connected to us, supervisor will try to dial to it.
 type ConnectionSupervisor interface {
 	core.Switcher
+	host.Components
 
 	// SetPeerAddr will set a peer as a necessary peer and store the peer's address.
 	SetPeerAddr(pid peer.ID, addr ma.Multiaddr)

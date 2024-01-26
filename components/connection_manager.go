@@ -84,7 +84,7 @@ type LevelConnectionManager struct {
 	logger *rainbowlog.Logger
 }
 
-func NewLevelConnectionManager(host host.Host) *LevelConnectionManager {
+func NewLevelConnectionManager() *LevelConnectionManager {
 	return &LevelConnectionManager{
 		mu:                            sync.RWMutex{},
 		maxCountOfPeers:               DefaultMaxCountOfPeers,
@@ -94,13 +94,19 @@ func NewLevelConnectionManager(host host.Host) *LevelConnectionManager {
 		highLevelPeers:                types.NewSet[peer.ID](),
 		highLevelConn:                 make([]*peerConnections, 0, 10),
 		lowLevelConn:                  make([]*peerConnections, 0, 10),
-		h:                             host,
+		h:                             nil,
 		expandingC:                    make(chan struct{}, 1),
 		eliminatePeers:                types.NewSet[peer.ID](),
 		logger: log.Logger.SubLogger(
 			rainbowlog.WithLabels(log.DefaultLoggerLabel, "LEVEL-CONNECTION-MANAGER"),
 		),
 	}
+}
+
+func (l *LevelConnectionManager) AttachHost(h host.Host) {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	l.h = h
 }
 
 // SetStrategy sets the elimination strategy for the LevelConnectionManager.
@@ -148,6 +154,13 @@ func (l *LevelConnectionManager) SetMaxCountOfConnectionsEachPeer(max int) {
 		max = DefaultMaxCountOfConnectionsEachPeer
 	}
 	l.maxCountOfConnectionsEachPeer = int64(max)
+}
+
+// AddHighLevelPeer adds a high-level peer ID to the LevelConnectionManager.
+func (l *LevelConnectionManager) AddHighLevelPeer(pid peer.ID) {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	l.highLevelPeers.Put(pid)
 }
 
 // getHighLevelConnections returns the connection set and index of a peer in the high level connections.

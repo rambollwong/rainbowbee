@@ -3,6 +3,7 @@ package manager
 import (
 	"io"
 
+	"github.com/rambollwong/rainbowbee/core/host"
 	"github.com/rambollwong/rainbowbee/core/network"
 	"github.com/rambollwong/rainbowbee/core/peer"
 )
@@ -44,6 +45,7 @@ type SendStreamPool interface {
 
 // SendStreamPoolManager manages all send stream pools.
 type SendStreamPoolManager interface {
+	host.Components
 	// Reset the manager.
 	Reset()
 
@@ -59,6 +61,7 @@ type SendStreamPoolManager interface {
 
 // ReceiveStreamManager manages all receive streams.
 type ReceiveStreamManager interface {
+	host.Components
 	// Reset the manager.
 	Reset()
 

@@ -85,9 +85,9 @@ func (b *BlackList) BlackConn(conn network.Connection) bool {
 	return false
 }
 
-// BlockPID checks if a given peer ID is blacklisted.
+// BlackPID checks if a given peer ID is blacklisted.
 // Returns true if the peer ID is blacklisted, otherwise false.
-func (b *BlackList) BlockPID(pid peer.ID) bool {
+func (b *BlackList) BlackPID(pid peer.ID) bool {
 	return b.pidSet.Exist(pid)
 }
 

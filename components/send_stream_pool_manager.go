@@ -4,6 +4,7 @@ import (
 	"errors"
 	"sync"
 
+	"github.com/rambollwong/rainbowbee/core/host"
 	"github.com/rambollwong/rainbowbee/core/manager"
 	"github.com/rambollwong/rainbowbee/core/network"
 	"github.com/rambollwong/rainbowbee/core/peer"
@@ -36,6 +37,10 @@ func NewSendStreamPoolManager() *SendStreamPoolManager {
 			rainbowlog.WithLabels(log.DefaultLoggerLabel, "SEND-STREAM-POOL-MANAGER"),
 		),
 	}
+}
+
+func (s *SendStreamPoolManager) AttachHost(_ host.Host) {
+
 }
 
 // Reset clears all send stream pools.
