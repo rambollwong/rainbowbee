@@ -2,7 +2,6 @@ package manager
 
 import (
 	"github.com/rambollwong/rainbowbee/core/handler"
-	"github.com/rambollwong/rainbowbee/core/host"
 	"github.com/rambollwong/rainbowbee/core/network"
 	"github.com/rambollwong/rainbowbee/core/peer"
 	"github.com/rambollwong/rainbowbee/core/protocol"
@@ -13,7 +12,6 @@ type ProtocolSupportNotifyFunc func(protocolID protocol.ID, pid peer.ID)
 
 // ProtocolManager manages protocols and protocol message handlers for peers.
 type ProtocolManager interface {
-	host.Components
 	// RegisterMsgPayloadHandler registers a protocol and associates a handler.MsgPayloadHandler with it.
 	// It returns an error if the registration fails.
 	RegisterMsgPayloadHandler(protocolID protocol.ID, handler handler.MsgPayloadHandler) error
@@ -59,7 +57,6 @@ type ProtocolManager interface {
 
 // ProtocolExchanger is responsible for exchanging protocols supported by both peers.
 type ProtocolExchanger interface {
-	host.Components
 	// ProtocolID returns the protocol.ID of the exchanger service.
 	// The protocol ID will be registered using the host.RegisterMsgPayloadHandler method.
 	ProtocolID() protocol.ID

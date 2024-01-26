@@ -67,6 +67,8 @@ func (c NetworkConfig) newTCPNetwork() (network.Network, error) {
 			return nil, ErrNilTLSConfig
 		}
 		opts = append(opts, tcp.WithTLSConfig(c.TLSConfig))
+	} else {
+		opts = append(opts, tcp.WithNoTLS())
 	}
 	if len(c.LocalPID) > 0 {
 		opts = append(opts, tcp.WithLocalPID(c.LocalPID))

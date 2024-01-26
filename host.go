@@ -140,18 +140,25 @@ func NewHost(opts ...Option) (h *Host, err error) {
 	if h.store == nil {
 		h.store = peerstore.NewBasicPeerStore(h.ID())
 	}
+	if c, ok := h.store.(host.Components); ok {
+		c.AttachHost(h)
+	}
 
 	// Initialize the connection supervisor if not provided.
 	if h.supervisor == nil {
 		h.supervisor = components.NewConnectionSupervisor(defaultSupervisorTryTimes)
 	}
-	h.supervisor.AttachHost(h)
+	if c, ok := h.supervisor.(host.Components); ok {
+		c.AttachHost(h)
+	}
 
 	// Initialize the connection manager if not provided.
 	if h.connMgr == nil {
 		h.connMgr = components.NewLevelConnectionManager()
 	}
-	h.connMgr.AttachHost(h)
+	if c, ok := h.connMgr.(host.Components); ok {
+		c.AttachHost(h)
+	}
 
 	// Initialize the send stream pool builder if not provided.
 	if h.sendStreamPoolBuilder == nil {
@@ -164,29 +171,40 @@ func NewHost(opts ...Option) (h *Host, err error) {
 	if h.sendStreamPoolMgr == nil {
 		h.sendStreamPoolMgr = components.NewSendStreamPoolManager()
 	}
-	h.sendStreamPoolMgr.AttachHost(h)
+	if c, ok := h.sendStreamPoolMgr.(host.Components); ok {
+		c.AttachHost(h)
+	}
 
 	// Initialize the receive stream manager if not provided.
 	if h.receiveStreamMgr == nil {
 		h.receiveStreamMgr = components.NewReceiveStreamManager()
 	}
-	h.receiveStreamMgr.AttachHost(h)
+	if c, ok := h.receiveStreamMgr.(host.Components); ok {
+		c.AttachHost(h)
+	}
 
 	// Initialize the protocol manager if not provided.
 	if h.protocolMgr == nil {
 		h.protocolMgr = components.NewProtocolManager(h.store)
 	}
-	h.protocolMgr.AttachHost(h)
+	if c, ok := h.protocolMgr.(host.Components); ok {
+		c.AttachHost(h)
+	}
 
 	// Initialize the protocol exchanger if not provided.
 	if h.protocolExr == nil {
 		h.protocolExr = components.NewProtocolExchanger(h.protocolMgr)
 	}
-	h.protocolExr.AttachHost(h)
+	if c, ok := h.protocolExr.(host.Components); ok {
+		c.AttachHost(h)
+	}
 
 	// Initialize the blacklist if not provided.
 	if h.blacklist == nil {
 		h.blacklist = components.NewBlacklist()
+	}
+	if c, ok := h.blacklist.(host.Components); ok {
+		c.AttachHost(h)
 	}
 
 	// Add blacklisted IP addresses and ports.
