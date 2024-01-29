@@ -239,7 +239,7 @@ func (l *LevelConnectionManager) eliminateConnectionsRandom(eliminateHigh bool) 
 	if hCount+lCount > l.maxCountOfPeers {
 		if lCount > 0 {
 			eliminatedPID := l.closeLowLevelConnRandom(lCount)
-			l.logger.Info().
+			l.logger.Debug().
 				Msg("connection eliminated").
 				Str("strategy", "random").
 				Str("level", "low").
@@ -251,7 +251,7 @@ func (l *LevelConnectionManager) eliminateConnectionsRandom(eliminateHigh bool) 
 			return "", false
 		}
 		eliminatedPID := l.closeHighLevelConnRandom(hCount)
-		l.logger.Info().
+		l.logger.Debug().
 			Msg("connection eliminated").
 			Str("strategy", "random").
 			Str("level", "high").
@@ -267,7 +267,7 @@ func (l *LevelConnectionManager) closeLowLevelConnFirst() peer.ID {
 	eliminatedPID := l.lowLevelConn[0].pid
 	l.closeLowLevelConnWithIdx(0)
 	l.lowLevelConn = l.lowLevelConn[1:]
-	l.logger.Info().
+	l.logger.Debug().
 		Msg("connection eliminated").
 		Str("strategy", "fifo").
 		Str("level", "low").
@@ -281,7 +281,7 @@ func (l *LevelConnectionManager) closeHighLevelConnFirst() peer.ID {
 	eliminatedPID := l.highLevelConn[0].pid
 	l.closeHighLevelConnWithIdx(0)
 	l.highLevelConn = l.highLevelConn[1:]
-	l.logger.Info().
+	l.logger.Debug().
 		Msg("connection eliminated").
 		Str("strategy", "fifo").
 		Str("level", "high").
@@ -320,7 +320,7 @@ func (l *LevelConnectionManager) closeLowLevelConnLast(lowLevelConnCount int) pe
 	eliminatedPID := l.lowLevelConn[idx].pid
 	l.closeLowLevelConnWithIdx(idx)
 	l.lowLevelConn = l.lowLevelConn[0:idx]
-	l.logger.Info().
+	l.logger.Debug().
 		Msg("connection eliminated").
 		Str("strategy", "lifo").
 		Str("level", "low").
@@ -335,7 +335,7 @@ func (l *LevelConnectionManager) closeHighLevelConnLast(highLevelConnCount int) 
 	eliminatedPID := l.highLevelConn[idx].pid
 	l.closeHighLevelConnWithIdx(idx)
 	l.highLevelConn = l.highLevelConn[0:idx]
-	l.logger.Info().
+	l.logger.Debug().
 		Msg("connection eliminated").
 		Str("strategy", "lifo").
 		Str("level", "high").

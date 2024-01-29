@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"crypto/ed25519"
 	"crypto/subtle"
+	"encoding/pem"
 	"errors"
 	"fmt"
 	"io"
@@ -142,4 +143,56 @@ func UnmarshalEd25519PrivateKey(data []byte) (PriKey, error) {
 	return &Ed25519PrivateKey{
 		k: ed25519.PrivateKey(data),
 	}, nil
+}
+
+// PEMEncodeEd25519PrivateKey encodes an Ed25519 private key into PEM format.
+func PEMEncodeEd25519PrivateKey(key *Ed25519PrivateKey) ([]byte, error) {
+	raw, err := key.Raw()
+	if err != nil {
+		return nil, err
+	}
+	skPem := &pem.Block{
+		Type:  PEMBlockTypeEd25519PrivateKey,
+		Bytes: raw,
+	}
+	return pem.EncodeToMemory(skPem), nil
+}
+
+// PEMDecodeEd25519PrivateKey decodes a PEM-encoded Ed25519 private key.
+func PEMDecodeEd25519PrivateKey(pemBytes []byte) (*Ed25519PrivateKey, error) {
+	skPem, _ := pem.Decode(pemBytes)
+	if skPem == nil {
+		return nil, ErrPEMDecodeFailed
+	}
+	sk, err := UnmarshalEd25519PrivateKey(skPem.Bytes)
+	if err != nil {
+		return nil, err
+	}
+	return sk.(*Ed25519PrivateKey), nil
+}
+
+// PEMEncodeEd25519PublicKey encodes an Ed25519 public key into PEM format.
+func PEMEncodeEd25519PublicKey(pk *Ed25519PublicKey) ([]byte, error) {
+	raw, err := pk.Raw()
+	if err != nil {
+		return nil, err
+	}
+	pkPem := &pem.Block{
+		Type:  PEMBlockTypeEd25519PublicKey,
+		Bytes: raw,
+	}
+	return pem.EncodeToMemory(pkPem), nil
+}
+
+// PEMDecodeEd25519PublicKey decodes a PEM-encoded Ed25519 public key.
+func PEMDecodeEd25519PublicKey(pemBytes []byte) (*Ed25519PublicKey, error) {
+	pkPem, _ := pem.Decode(pemBytes)
+	if pkPem == nil {
+		return nil, ErrPEMDecodeFailed
+	}
+	pk, err := UnmarshalEd25519PublicKey(pkPem.Bytes)
+	if err != nil {
+		return nil, err
+	}
+	return pk.(*Ed25519PublicKey), nil
 }

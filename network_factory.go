@@ -5,6 +5,7 @@ import (
 	"crypto/tls"
 	"errors"
 
+	cc "github.com/rambollwong/rainbowbee/core/crypto"
 	"github.com/rambollwong/rainbowbee/core/network"
 	"github.com/rambollwong/rainbowbee/core/peer"
 	"github.com/rambollwong/rainbowbee/network/tcp"
@@ -38,14 +39,21 @@ func (t NetworkType) String() string {
 type NetworkConfig struct {
 	Type       NetworkType
 	Ctx        context.Context
-	LocalPID   peer.ID
+	PrivateKey cc.PriKey
 	TLSEnabled bool
 	TLSConfig  *tls.Config
 	PIDLoader  peer.IDLoader
+
+	localPID peer.ID
 }
 
 // NewNetwork creates a new network instance based on the configuration.
 func (c NetworkConfig) NewNetwork() (network.Network, error) {
+	var err error
+	c.localPID, err = peer.IDFromPriKey(c.PrivateKey)
+	if err != nil {
+		return nil, err
+	}
 	switch c.Type {
 	case NetworkTypeTCP:
 		return c.newTCPNetwork()
@@ -70,8 +78,8 @@ func (c NetworkConfig) newTCPNetwork() (network.Network, error) {
 	} else {
 		opts = append(opts, tcp.WithNoTLS())
 	}
-	if len(c.LocalPID) > 0 {
-		opts = append(opts, tcp.WithLocalPID(c.LocalPID))
+	if len(c.localPID) > 0 {
+		opts = append(opts, tcp.WithLocalPID(c.localPID))
 	}
 	if c.PIDLoader != nil {
 		opts = append(opts, tcp.WithPIDLoader(c.PIDLoader))

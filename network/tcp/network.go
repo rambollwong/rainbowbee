@@ -107,7 +107,7 @@ func canDial(addr ma.Multiaddr) bool {
 }
 
 func (n *Network) dial(ctx context.Context, remoteAddr ma.Multiaddr) (conn *Conn, err error) {
-	dialRemoteAddr, remotePID := util.GetNetAddrAndPIDFromNormalMultiAddr(remoteAddr)
+	dialRemoteAddr, remotePID := util.SplitAddrToTransportAndPID(remoteAddr)
 	if dialRemoteAddr == nil && remotePID == "" || dialRemoteAddr == nil || !canDial(dialRemoteAddr) {
 		return nil, ErrWrongTcpAddr
 	}
@@ -139,7 +139,7 @@ func (n *Network) dial(ctx context.Context, remoteAddr ma.Multiaddr) (conn *Conn
 			LocalAddr: localNetAddr,
 			Control:   control,
 		}
-		n.logger.Info().
+		n.logger.Debug().
 			Msg("trying to dial...").
 			Str("local_net_address", localNetAddr.String()).
 			Str("remote_net_address", remoteNetAddr.String()).
@@ -147,7 +147,7 @@ func (n *Network) dial(ctx context.Context, remoteAddr ma.Multiaddr) (conn *Conn
 			Done()
 		c, err := dialer.DialContext(ctx, remoteNetAddr.Network(), remoteNetAddr.String())
 		if err != nil {
-			n.logger.Info().
+			n.logger.Debug().
 				Msg("failed to dial.").
 				Str("local_net_address", localNetAddr.String()).
 				Str("remote_net_address", remoteNetAddr.String()).
@@ -164,14 +164,14 @@ func (n *Network) dial(ctx context.Context, remoteAddr ma.Multiaddr) (conn *Conn
 		}
 		if remotePID != "" && conn.remotePID != remotePID {
 			_ = conn.Close()
-			n.logger.Info().
+			n.logger.Debug().
 				Msg("pid mismatch, close the connection").
 				Str("expected", remotePID.String()).
 				Str("got", conn.remotePID.String()).
 				Done()
 			return nil, ErrPidMismatch
 		}
-		n.logger.Info().Msg("new connection dialed").
+		n.logger.Debug().Msg("new connection dialed").
 			Str("local_net_address", localNetAddr.String()).
 			Str("remote_net_address", remoteNetAddr.String()).
 			Str("network", localNetAddr.Network()).
@@ -179,7 +179,7 @@ func (n *Network) dial(ctx context.Context, remoteAddr ma.Multiaddr) (conn *Conn
 			Done()
 		return conn, err
 	}
-	n.logger.Info().Msg("all dial failed").Done()
+	n.logger.Debug().Msg("all dial failed").Done()
 	return nil, ErrAllDialFailed
 }
 
@@ -304,7 +304,7 @@ func (n *Network) listenTCP(ctx context.Context, addresses []ma.Multiaddr) ([]ne
 	listeners := make([]net.Listener, 0, len(addresses))
 	listenCfg := net.ListenConfig{Control: control}
 	for _, address := range addresses {
-		addr, _ := util.GetNetAddrAndPIDFromNormalMultiAddr(address)
+		addr, _ := util.SplitAddrToTransportAndPID(address)
 		if addr == nil {
 			return nil, ErrNilAddr
 		}
@@ -325,7 +325,7 @@ func (n *Network) listenTCP(ctx context.Context, addresses []ma.Multiaddr) ([]ne
 		listeners = append(listeners, listener)
 		n.logger.Info().
 			Msg("listening...").
-			Str("on", util.CreateMultiAddrWithPIDAndNetAddr(n.localPID, addr).String()).
+			Str("on", util.PIDAndNetAddrToMultiAddr(n.localPID, addr).String()).
 			Done()
 	}
 	return listeners, nil

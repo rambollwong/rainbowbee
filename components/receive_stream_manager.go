@@ -62,10 +62,10 @@ func (r *ReceiveStreamManager) SetPeerReceiveStreamMaxCount(max int) {
 
 // AddPeerReceiveStream adds a receive stream for a specific peer connection.
 func (r *ReceiveStreamManager) AddPeerReceiveStream(
-	pid peer.ID,
 	conn network.Connection,
 	receiveStream network.ReceiveStream,
 ) error {
+	pid := conn.LocalPeerID()
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	count, _ := r.countMap[pid]
@@ -97,10 +97,10 @@ func (r *ReceiveStreamManager) AddPeerReceiveStream(
 
 // RemovePeerReceiveStream removes a receive stream for a specific peer connection.
 func (r *ReceiveStreamManager) RemovePeerReceiveStream(
-	pid peer.ID,
 	conn network.Connection,
 	receiveStream network.ReceiveStream,
 ) error {
+	pid := conn.LocalPeerID()
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	count, _ := r.countMap[pid]
@@ -125,12 +125,32 @@ func (r *ReceiveStreamManager) RemovePeerReceiveStream(
 		} else {
 			r.countMap[pid] = count
 		}
+		// If all Receive Streams for a connection are removed, we consider the connection to be disconnected
+		if streamSet.Size() == 0 {
+			_ = conn.Close()
+			delete(connM, conn)
+		}
 	}
 	r.logger.Debug().Msg("receive stream removed").
 		Str("pid", pid.String()).
 		Str("conn_remote_addr", conn.RemoteAddr().String()).
 		Done()
 	return nil
+}
+
+// GetConnReceiveStreamCount returns the number of receive streams associated with the given network connection.
+func (r *ReceiveStreamManager) GetConnReceiveStreamCount(conn network.Connection) int {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	connM, ok := r.streamMap[conn.LocalPeerID()]
+	if !ok {
+		return 0
+	}
+	streamSet, ok := connM[conn]
+	if !ok {
+		return 0
+	}
+	return int(streamSet.Size())
 }
 
 // GetCurrentPeerReceiveStreamCount returns the current count of receive streams for a peer.

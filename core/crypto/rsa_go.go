@@ -6,6 +6,7 @@ import (
 	"crypto/rsa"
 	"crypto/sha256"
 	"crypto/x509"
+	"encoding/pem"
 	"errors"
 	"io"
 
@@ -137,4 +138,56 @@ func UnmarshalRsaPublicKey(b []byte) (key PubKey, err error) {
 	}
 
 	return &RsaPublicKey{k: *pk}, nil
+}
+
+// PEMEncodeRsaPrivateKey encodes an Rsa private key into PEM format.
+func PEMEncodeRsaPrivateKey(key *RsaPrivateKey) ([]byte, error) {
+	bytes, err := key.Raw()
+	if err != nil {
+		return nil, err
+	}
+	skPem := &pem.Block{
+		Type:  PEMBlockTypeRsaPrivateKey,
+		Bytes: bytes,
+	}
+	return pem.EncodeToMemory(skPem), nil
+}
+
+// PEMDecodeRsaPrivateKey decodes a PEM-encoded Rsa private key.
+func PEMDecodeRsaPrivateKey(pemBytes []byte) (*RsaPrivateKey, error) {
+	skPem, _ := pem.Decode(pemBytes)
+	if skPem == nil {
+		return nil, ErrPEMDecodeFailed
+	}
+	sk, err := UnmarshalRsaPrivateKey(skPem.Bytes)
+	if err != nil {
+		return nil, err
+	}
+	return sk.(*RsaPrivateKey), nil
+}
+
+// PEMEncodeRsaPublicKey encodes an Rsa public key into PEM format.
+func PEMEncodeRsaPublicKey(pk *RsaPublicKey) ([]byte, error) {
+	bytes, err := pk.Raw()
+	if err != nil {
+		return nil, err
+	}
+	pkPem := &pem.Block{
+		Type:  PEMBlockTypeRsaPublicKey,
+		Bytes: bytes,
+	}
+	return pem.EncodeToMemory(pkPem), nil
+}
+
+// PEMDecodeRsaPublicKey decodes a PEM-encoded Rsa public key.
+func PEMDecodeRsaPublicKey(pemBytes []byte) (*RsaPublicKey, error) {
+	pkPem, _ := pem.Decode(pemBytes)
+	if pkPem == nil {
+		return nil, ErrPEMDecodeFailed
+	}
+	pk, err := UnmarshalRsaPublicKey(pkPem.Bytes)
+	if err != nil {
+		return nil, err
+	}
+	return pk.(*RsaPublicKey), nil
 }

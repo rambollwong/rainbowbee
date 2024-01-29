@@ -119,6 +119,8 @@ func NewHost(opts ...Option) (h *Host, err error) {
 		receiveStreamMgr:      nil,
 		blacklist:             nil,
 		notifiee:              types.NewSet[host.Notifiee](),
+		connExclusive:         make(map[peer.ID]network.Connection),
+		connExclusiveLock:     sync.Mutex{},
 		pushProtocolSignalC:   make(chan struct{}, 2),
 		notifyConnC:           make(chan network.Connection),
 		closeC:                make(chan struct{}),
@@ -414,7 +416,7 @@ func (h *Host) SendMsg(protocolID protocol.ID, receiverPID peer.ID, msgPayload [
 
 		// Check if the connection is closed.
 		if util.CheckClosedConnectionWithErr(sendStream.Conn(), err) {
-			return nil
+			return err
 		}
 
 		err = ErrSendStreamWriteFailed
@@ -438,7 +440,7 @@ func (h *Host) SendMsg(protocolID protocol.ID, receiverPID peer.ID, msgPayload [
 // Dial initiates a connection to a remote address specified by a multiaddress.
 func (h *Host) Dial(remoteAddr ma.Multiaddr) (network.Connection, error) {
 	// Extract the network address and peer ID from the multiaddress.
-	remoteNetAddr, remotePID := util.GetNetAddrAndPIDFromNormalMultiAddr(remoteAddr)
+	remoteNetAddr, remotePID := util.SplitAddrToTransportAndPID(remoteAddr)
 
 	// Check if the extracted network address and peer ID are valid.
 	if remoteNetAddr == nil && remotePID == "" {
@@ -515,7 +517,7 @@ func (h *Host) AddDirectPeer(dp ma.Multiaddr) error {
 	defer h.mu.Unlock()
 
 	// Extract the peer ID from the multiaddress.
-	_, pid := util.GetNetAddrAndPIDFromNormalMultiAddr(dp)
+	_, pid := util.SplitAddrToTransportAndPID(dp)
 
 	// Check if the extracted peer ID is valid.
 	if len(pid) == 0 {
@@ -812,16 +814,15 @@ func (h *Host) handleReceiveStreamData(dataBz []byte, pid peer.ID) {
 
 // receiveStreamHandlerLoop is a loop that handles the receive stream.
 func (h *Host) receiveStreamHandlerLoop(receiveStream network.ReceiveStream) {
-	// Retrieve the remote peer ID from the receive stream's connection.
-	rPID := receiveStream.Conn().RemotePeerID()
+	conn := receiveStream.Conn()
 	var err error
 
 Loop:
 	for {
 		// Check if the receive stream's connection is closed.
-		if receiveStream.Conn().Closed() {
+		if conn.Closed() {
 			// Call the handleClosingConn method to handle the closing connection.
-			h.handleClosingConn(receiveStream.Conn())
+			h.handleClosingConn(conn)
 			// Break the loop.
 			break Loop
 		}
@@ -842,8 +843,7 @@ Loop:
 			break Loop
 		}
 
-		// Spawn a goroutine to handle the received data using the handleReceiveStreamData method.
-		go h.handleReceiveStreamData(dataBz, rPID)
+		h.handleReceiveStreamData(dataBz, conn.RemotePeerID())
 	}
 
 	// Handle errors that occurred during the loop.
@@ -854,7 +854,8 @@ Loop:
 		}
 
 		// Check if the receive stream's connection is closed with the given error and return if it is.
-		if util.CheckClosedConnectionWithErr(receiveStream.Conn(), err) {
+		if util.CheckClosedConnectionWithErr(conn, err) {
+			_ = conn.Close()
 			return
 		}
 
@@ -862,11 +863,11 @@ Loop:
 		_ = receiveStream.Close()
 
 		// Remove the receive stream from the receive stream manager.
-		if err := h.receiveStreamMgr.RemovePeerReceiveStream(rPID, receiveStream.Conn(), receiveStream); err != nil {
+		if err := h.receiveStreamMgr.RemovePeerReceiveStream(conn, receiveStream); err != nil {
 			h.logger.Debug().
 				Msg("failed to remove receive stream from the manager.").
-				Str("remote_pid", rPID.String()).
-				Str("remote_addr", receiveStream.Conn().RemoteAddr().String()).
+				Str("remote_pid", conn.RemotePeerID().String()).
+				Str("remote_addr", conn.RemoteAddr().String()).
 				Err(err).
 				Done()
 			return
@@ -875,22 +876,24 @@ Loop:
 		// Log a warning message about the failure to read data from the receive stream.
 		h.logger.Warn().
 			Msg("failed to read data from the receive stream.").
-			Str("remote_pid", rPID.String()).
-			Str("remote_addr", receiveStream.Conn().RemoteAddr().String()).
+			Str("remote_pid", conn.RemotePeerID().String()).
+			Str("remote_addr", conn.RemoteAddr().String()).
 			Err(err).
 			Done()
+
+		// If all Receive Streams for a connection are removed, we consider the connection to be disconnected
+		if h.receiveStreamMgr.GetConnReceiveStreamCount(conn) == 0 {
+			_ = conn.Close()
+		}
 	}
 }
 
 // handleReceiveStream is responsible for handling a receive stream.
 func (h *Host) handleReceiveStream(receiveStream network.ReceiveStream) {
-	// Retrieve the remote peer ID from the receive stream's connection.
-	rPID := receiveStream.Conn().RemotePeerID()
-
 	// Add the receive stream to the receive stream manager.
-	if err := h.receiveStreamMgr.AddPeerReceiveStream(rPID, receiveStream.Conn(), receiveStream); err != nil {
+	if err := h.receiveStreamMgr.AddPeerReceiveStream(receiveStream.Conn(), receiveStream); err != nil {
 		h.logger.Error().Msg("failed to add receive stream to the manager.").
-			Str("remote_pid", rPID.String()).
+			Str("remote_pid", receiveStream.Conn().RemotePeerID().String()).
 			Str("remote_addr", receiveStream.Conn().RemoteAddr().String()).
 			Err(err).
 			Done()
@@ -1125,10 +1128,10 @@ func (h *Host) dial(pid peer.ID, addr ma.Multiaddr) (network.Connection, error) 
 
 		// Iterate over each remote address and attempt to dial.
 		for _, address := range remoteAddresses {
-			tmpAddr, tmpPID := util.GetNetAddrAndPIDFromNormalMultiAddr(address)
+			tmpAddr, tmpPID := util.SplitAddrToTransportAndPID(address)
 			if tmpPID == "" {
 				// If the address doesn't include a peer ID, create a new address with the provided peer ID.
-				address = util.CreateMultiAddrWithPIDAndNetAddr(pid, tmpAddr)
+				address = util.PIDAndNetAddrToMultiAddr(pid, tmpAddr)
 			} else if tmpPID != pid {
 				// Skip this address if the peer ID doesn't match the one provided.
 				continue

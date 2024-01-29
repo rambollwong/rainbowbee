@@ -6,9 +6,11 @@ import (
 
 	ma "github.com/multiformats/go-multiaddr"
 	"github.com/rambollwong/rainbowbee/core/blacklist"
+	cc "github.com/rambollwong/rainbowbee/core/crypto"
 	"github.com/rambollwong/rainbowbee/core/manager"
 	"github.com/rambollwong/rainbowbee/core/peer"
 	"github.com/rambollwong/rainbowbee/core/store"
+	"github.com/rambollwong/rainbowbee/util"
 )
 
 // Option represents an option function for configuring a Host.
@@ -83,10 +85,11 @@ func WithNetworkType(networkType NetworkType) Option {
 	}
 }
 
-// WithLocalPID sets the local peer ID for the Host.
-func WithLocalPID(pid peer.ID) Option {
+// WithPriKey sets the private key for the Host.
+// This Option will also set the Local PID at the same time.
+func WithPriKey(priKey cc.PriKey) Option {
 	return func(h *Host) error {
-		h.nwCfg.LocalPID = pid
+		h.nwCfg.PrivateKey = priKey
 		return nil
 	}
 }
@@ -94,11 +97,32 @@ func WithLocalPID(pid peer.ID) Option {
 // WithTLS enables TLS for the Host with the provided TLS configuration and peer ID loader.
 func WithTLS(tlsConfig *tls.Config, pidLoader peer.IDLoader) Option {
 	return func(h *Host) error {
-		h.nwCfg.TLSEnabled = true
 		h.nwCfg.TLSConfig = tlsConfig.Clone()
 		h.nwCfg.PIDLoader = pidLoader
+		h.nwCfg.TLSEnabled = true
+		return nil
+	}
+}
 
-		// todo get localPID from the private key in tls config
+// WithEasyToUseTLS will perform the same logic as WithPriKey and use the given priKey to
+// generate a tls.Config with a self-signed certificate and also set up a corresponding PIDLoader.
+// This option facilitates quick start for users who do not require custom tls.Config.
+func WithEasyToUseTLS(priKey cc.PriKey) Option {
+	return func(h *Host) (err error) {
+		// Assign the priKey to the PrivateKey field of the network configuration
+		h.nwCfg.PrivateKey = priKey
+
+		// Generate a TLS configuration using the EasyToUseTLSConfig function
+		h.nwCfg.TLSConfig, err = util.EasyToUseTLSConfig(h.nwCfg.PrivateKey, nil)
+		if err != nil {
+			return err
+		}
+
+		// Set the PIDLoader field of the network configuration to EasyToUsePIDLoader function
+		h.nwCfg.PIDLoader = util.EasyToUsePIDLoader
+
+		// Set the TLSEnabled field of the network configuration to true
+		h.nwCfg.TLSEnabled = true
 
 		return nil
 	}

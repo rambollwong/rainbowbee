@@ -89,7 +89,7 @@ func (s *SendStreamPool) InitStreams() (err error) {
 				return
 			}
 		}
-		s.logger.Info().
+		s.logger.Debug().
 			Msg("send streams initialized.").
 			Int("init_size", s.initSize).
 			Str("remote_pid", s.conn.RemotePeerID().String()).

@@ -251,7 +251,7 @@ Loop:
 		if breakCheck() {
 			break Loop
 		}
-		a.supervisor.logger.Info().
+		a.supervisor.logger.Debug().
 			Msg("dialing to peer").
 			Str("pid", a.pid.String()).
 			Str("addr", a.peerAddr.String()).
@@ -262,7 +262,7 @@ Loop:
 		}
 		if err != nil {
 			a.tryTimes++
-			a.supervisor.logger.Error().
+			a.supervisor.logger.Warn().
 				Msg("dial to peer failed.").
 				Str("pid", a.pid.String()).
 				Str("addr", a.peerAddr.String()).
@@ -272,7 +272,7 @@ Loop:
 		}
 		if conn == nil {
 			a.tryTimes++
-			a.supervisor.logger.Info().
+			a.supervisor.logger.Warn().
 				Msg("dial to peer failed, nil connection.").
 				Str("pid", a.pid.String()).
 				Str("addr", a.peerAddr.String()).
@@ -280,7 +280,7 @@ Loop:
 				Done()
 		} else {
 			if a.pid != conn.RemotePeerID() {
-				a.supervisor.logger.Error().
+				a.supervisor.logger.Warn().
 					Msg("dial to peer failed, pid mismatch, close the connection and give it up.").
 					Str("pid", a.pid.String()).
 					Str("got", conn.RemotePeerID().String()).
@@ -290,7 +290,7 @@ Loop:
 				a.giveUp = true
 				break Loop
 			}
-			a.supervisor.logger.Info().
+			a.supervisor.logger.Debug().
 				Msg("dial to peer success.").
 				Str("pid", a.pid.String()).
 				Str("addr", a.peerAddr.String()).

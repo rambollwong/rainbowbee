@@ -2,6 +2,7 @@ package crypto
 
 import (
 	"crypto/sha256"
+	"encoding/pem"
 	"fmt"
 	"io"
 
@@ -45,6 +46,58 @@ func UnmarshalSecp256k1PublicKey(data []byte) (_k PubKey, err error) {
 	}
 
 	return (*Secp256k1PublicKey)(k), nil
+}
+
+// PEMEncodeSecp256k1PrivateKey encodes an Secp256k1 private key into PEM format.
+func PEMEncodeSecp256k1PrivateKey(key *Secp256k1PrivateKey) ([]byte, error) {
+	bytes, err := key.Raw()
+	if err != nil {
+		return nil, err
+	}
+	skPem := &pem.Block{
+		Type:  PEMBlockTypeSecp256k1PrivateKey,
+		Bytes: bytes,
+	}
+	return pem.EncodeToMemory(skPem), nil
+}
+
+// PEMDecodeSecp256k1PrivateKey decodes a PEM-encoded Secp256k1 private key.
+func PEMDecodeSecp256k1PrivateKey(pemBytes []byte) (*Secp256k1PrivateKey, error) {
+	skPem, _ := pem.Decode(pemBytes)
+	if skPem == nil {
+		return nil, ErrPEMDecodeFailed
+	}
+	sk, err := UnmarshalSecp256k1PrivateKey(skPem.Bytes)
+	if err != nil {
+		return nil, err
+	}
+	return sk.(*Secp256k1PrivateKey), nil
+}
+
+// PEMEncodeSecp256k1PublicKey encodes an Secp256k1 public key into PEM format.
+func PEMEncodeSecp256k1PublicKey(pk *Secp256k1PublicKey) ([]byte, error) {
+	bytes, err := pk.Raw()
+	if err != nil {
+		return nil, err
+	}
+	pkPem := &pem.Block{
+		Type:  PEMBlockTypeSecp256k1PublicKey,
+		Bytes: bytes,
+	}
+	return pem.EncodeToMemory(pkPem), nil
+}
+
+// PEMDecodeSecp256k1PublicKey decodes a PEM-encoded Secp256k1 public key.
+func PEMDecodeSecp256k1PublicKey(pemBytes []byte) (*Secp256k1PublicKey, error) {
+	pkPem, _ := pem.Decode(pemBytes)
+	if pkPem == nil {
+		return nil, ErrPEMDecodeFailed
+	}
+	pk, err := UnmarshalSecp256k1PublicKey(pkPem.Bytes)
+	if err != nil {
+		return nil, err
+	}
+	return pk.(*Secp256k1PublicKey), nil
 }
 
 // Type returns the private key type

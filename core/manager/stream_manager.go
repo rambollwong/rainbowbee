@@ -66,10 +66,13 @@ type ReceiveStreamManager interface {
 	SetPeerReceiveStreamMaxCount(max int)
 
 	// AddPeerReceiveStream appends a receiving stream to the manager.
-	AddPeerReceiveStream(pid peer.ID, conn network.Connection, stream network.ReceiveStream) error
+	AddPeerReceiveStream(conn network.Connection, stream network.ReceiveStream) error
 
 	// RemovePeerReceiveStream removes a receiving stream from the manager.
-	RemovePeerReceiveStream(pid peer.ID, conn network.Connection, stream network.ReceiveStream) error
+	RemovePeerReceiveStream(conn network.Connection, stream network.ReceiveStream) error
+
+	// GetConnReceiveStreamCount returns the number of ReceiveStreams for the given conn.
+	GetConnReceiveStreamCount(conn network.Connection) int
 
 	// GetCurrentPeerReceiveStreamCount returns the current count of receive streams
 	// whose remote peer ID is the given pid.

@@ -1,8 +1,11 @@
 package crypto
 
 import (
+	"crypto/rand"
 	"crypto/subtle"
+	"encoding/pem"
 	"errors"
+	"io"
 
 	"github.com/rambollwong/rainbowbee/core/crypto/pb"
 	"google.golang.org/protobuf/proto"
@@ -17,11 +20,30 @@ const (
 	Secp256k1
 	// ECDSA is an enum for the supported ECDSA key type.
 	ECDSA
+
+	// PEMBlockTypeRsaPrivateKey represents the PEM block type for RSA private key.
+	PEMBlockTypeRsaPrivateKey = "RSA PRIVATE KEY"
+	// PEMBlockTypeEd25519PrivateKey represents the PEM block type for Ed25519 private key.
+	PEMBlockTypeEd25519PrivateKey = "ED25519 PRIVATE KEY"
+	// PEMBlockTypeSecp256k1PrivateKey represents the PEM block type for secp256k1 private key.
+	PEMBlockTypeSecp256k1PrivateKey = "SECP256K1 PRIVATE KEY"
+	// PEMBlockTypeECDSAPrivateKey represents the PEM block type for ECDSA private key.
+	PEMBlockTypeECDSAPrivateKey = "ECDSA PRIVATE KEY"
+	// PEMBlockTypeRsaPublicKey represents the PEM block type for RSA public key.
+	PEMBlockTypeRsaPublicKey = "RSA PUBLIC KEY"
+	// PEMBlockTypeEd25519PublicKey represents the PEM block type for Ed25519 public key.
+	PEMBlockTypeEd25519PublicKey = "ED25519 PUBLIC KEY"
+	// PEMBlockTypeSecp256k1PublicKey represents the PEM block type for secp256k1 public key.
+	PEMBlockTypeSecp256k1PublicKey = "SECP256K1 PUBLIC KEY"
+	// PEMBlockTypeECDSAPublicKey represents the PEM block type for ECDSA public key.
+	PEMBlockTypeECDSAPublicKey = "ECDSA PUBLIC KEY"
 )
 
 var (
 	// ErrBadKeyType is returned when a key is not supported.
 	ErrBadKeyType = errors.New("invalid or unsupported key type")
+	// ErrPEMDecodeFailed is returned when decode pem to key failed.
+	ErrPEMDecodeFailed = errors.New("failed to decode pem")
 	// KeyTypes is a list of supported keys
 	KeyTypes = []int{
 		RSA,
@@ -201,4 +223,99 @@ func basicEquals(k1, k2 Key) bool {
 		return false
 	}
 	return subtle.ConstantTimeCompare(a, b) == 1
+}
+
+// GenerateKeyPair generates a private and public key.
+// When generating Rsa type Key, bits need to be provided.
+func GenerateKeyPair(typ int, bits ...int) (PriKey, PubKey, error) {
+	return GenerateKeyPairWithReader(typ, rand.Reader, bits...)
+}
+
+// GenerateKeyPairWithReader returns a keypair of the given type and bit-size.
+// When generating Rsa type Key, bits need to be provided.
+func GenerateKeyPairWithReader(typ int, src io.Reader, bits ...int) (PriKey, PubKey, error) {
+	switch typ {
+	case RSA:
+		return GenerateRSAKeyPair(bits[0], src)
+	case Ed25519:
+		return GenerateEd25519Key(src)
+	case Secp256k1:
+		return GenerateSecp256k1Key(src)
+	case ECDSA:
+		return GenerateECDSAKeyPair(src)
+	default:
+		return nil, nil, ErrBadKeyType
+	}
+}
+
+// PEMEncodePriKey encodes a private key into PEM format based on the key's type.
+func PEMEncodePriKey(priKey PriKey) ([]byte, error) {
+	switch priKey.Type() {
+	case pb.KeyType_RSA:
+		return PEMEncodeRsaPrivateKey(priKey.(*RsaPrivateKey))
+	case pb.KeyType_Ed25519:
+		return PEMEncodeEd25519PrivateKey(priKey.(*Ed25519PrivateKey))
+	case pb.KeyType_Secp256k1:
+		return PEMEncodeSecp256k1PrivateKey(priKey.(*Secp256k1PrivateKey))
+	case pb.KeyType_ECDSA:
+		return PEMEncodeECDSAPrivateKey(priKey.(*ECDSAPrivateKey))
+	default:
+		return nil, ErrBadKeyType
+	}
+}
+
+// PEMDecodePriKey decodes a PEM-encoded private key based on the key's type.
+func PEMDecodePriKey(pemBytes []byte) (PriKey, error) {
+	skPem, _ := pem.Decode(pemBytes)
+	if skPem == nil {
+		return nil, ErrPEMDecodeFailed
+	}
+	switch skPem.Type {
+	case PEMBlockTypeRsaPrivateKey:
+		return UnmarshalRsaPrivateKey(skPem.Bytes)
+	case PEMBlockTypeEd25519PrivateKey:
+		return UnmarshalEd25519PrivateKey(skPem.Bytes)
+	case PEMBlockTypeSecp256k1PrivateKey:
+		return UnmarshalSecp256k1PrivateKey(skPem.Bytes)
+	case PEMBlockTypeECDSAPrivateKey:
+		return UnmarshalECDSAPrivateKey(skPem.Bytes)
+	default:
+		return nil, ErrBadKeyType
+	}
+}
+
+// PEMEncodePubKey encodes a public key into PEM format based on the key's type.
+func PEMEncodePubKey(pubKey PubKey) ([]byte, error) {
+	switch pubKey.Type() {
+	case pb.KeyType_RSA:
+		return PEMEncodeRsaPublicKey(pubKey.(*RsaPublicKey))
+	case pb.KeyType_Ed25519:
+		return PEMEncodeEd25519PublicKey(pubKey.(*Ed25519PublicKey))
+	case pb.KeyType_Secp256k1:
+		return PEMEncodeSecp256k1PublicKey(pubKey.(*Secp256k1PublicKey))
+	case pb.KeyType_ECDSA:
+		return PEMEncodeECDSAPublicKey(pubKey.(*ECDSAPublicKey))
+	default:
+		return nil, ErrBadKeyType
+	}
+}
+
+// PEMDecodePubKey decodes a PEM-encoded public key based on the key's type.
+func PEMDecodePubKey(pemBytes []byte) (PubKey, error) {
+	pkPem, _ := pem.Decode(pemBytes)
+	if pkPem == nil {
+		return nil, ErrPEMDecodeFailed
+	}
+	switch pkPem.Type {
+	case PEMBlockTypeRsaPublicKey:
+		return UnmarshalRsaPublicKey(pkPem.Bytes)
+	case PEMBlockTypeEd25519PublicKey:
+		return UnmarshalEd25519PublicKey(pkPem.Bytes)
+	case PEMBlockTypeSecp256k1PublicKey:
+		return UnmarshalSecp256k1PublicKey(pkPem.Bytes)
+	case PEMBlockTypeECDSAPublicKey:
+		return UnmarshalECDSAPublicKey(pkPem.Bytes)
+	default:
+		return nil, ErrBadKeyType
+	}
 }

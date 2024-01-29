@@ -7,6 +7,7 @@ import (
 	"crypto/sha256"
 	"crypto/x509"
 	"encoding/asn1"
+	"encoding/pem"
 	"errors"
 	"io"
 	"math/big"
@@ -72,8 +73,8 @@ func ECDSAPublicKeyFromPubKey(pub ecdsa.PublicKey) (PubKey, error) {
 }
 
 // MarshalECDSAPrivateKey returns x509 bytes from a private key.
-func MarshalECDSAPrivateKey(ePriv ECDSAPrivateKey) (res []byte, err error) {
-	return x509.MarshalECPrivateKey(ePriv.pri)
+func MarshalECDSAPrivateKey(ePri ECDSAPrivateKey) (res []byte, err error) {
+	return x509.MarshalECPrivateKey(ePri.pri)
 }
 
 // MarshalECDSAPublicKey returns x509 bytes from a public key.
@@ -104,6 +105,58 @@ func UnmarshalECDSAPublicKey(data []byte) (key PubKey, err error) {
 	}
 
 	return &ECDSAPublicKey{pub}, nil
+}
+
+// PEMEncodeECDSAPrivateKey encodes an ECDSA private key into PEM format.
+func PEMEncodeECDSAPrivateKey(key *ECDSAPrivateKey) ([]byte, error) {
+	bytes, err := MarshalECDSAPrivateKey(*key)
+	if err != nil {
+		return nil, err
+	}
+	skPem := &pem.Block{
+		Type:  PEMBlockTypeECDSAPrivateKey,
+		Bytes: bytes,
+	}
+	return pem.EncodeToMemory(skPem), nil
+}
+
+// PEMDecodeECDSAPrivateKey decodes a PEM-encoded ECDSA private key.
+func PEMDecodeECDSAPrivateKey(pemBytes []byte) (*ECDSAPrivateKey, error) {
+	skPem, _ := pem.Decode(pemBytes)
+	if skPem == nil {
+		return nil, ErrPEMDecodeFailed
+	}
+	sk, err := UnmarshalECDSAPrivateKey(skPem.Bytes)
+	if err != nil {
+		return nil, err
+	}
+	return sk.(*ECDSAPrivateKey), nil
+}
+
+// PEMEncodeECDSAPublicKey encodes an ECDSA public key into PEM format.
+func PEMEncodeECDSAPublicKey(pk *ECDSAPublicKey) ([]byte, error) {
+	bytes, err := MarshalECDSAPublicKey(*pk)
+	if err != nil {
+		return nil, err
+	}
+	pkPem := &pem.Block{
+		Type:  PEMBlockTypeECDSAPublicKey,
+		Bytes: bytes,
+	}
+	return pem.EncodeToMemory(pkPem), nil
+}
+
+// PEMDecodeECDSAPublicKey decodes a PEM-encoded ECDSA public key.
+func PEMDecodeECDSAPublicKey(pemBytes []byte) (*ECDSAPublicKey, error) {
+	pkPem, _ := pem.Decode(pemBytes)
+	if pkPem == nil {
+		return nil, ErrPEMDecodeFailed
+	}
+	pk, err := UnmarshalECDSAPublicKey(pkPem.Bytes)
+	if err != nil {
+		return nil, err
+	}
+	return pk.(*ECDSAPublicKey), nil
 }
 
 // Type returns the key type.

@@ -92,7 +92,7 @@ func (p *ProtocolExchanger) Handle(senderPID peer.ID, msgPayload []byte) {
 		return
 	}
 
-	p.logger.Info().
+	p.logger.Debug().
 		Msg("protocol exchanger payload received.").
 		Str("type", msg.PayloadType.String()).
 		Str("sender", msg.Pid).
@@ -217,7 +217,7 @@ func (p *ProtocolExchanger) PushProtocols(pid peer.ID) error {
 	// Wait for the PUSH operation to complete or timeout.
 	select {
 	case <-signalC:
-		p.logger.Info().Msg("push protocols success.").Str("remote_pid", pid.String()).Done()
+		p.logger.Debug().Msg("push protocols success.").Str("remote_pid", pid.String()).Done()
 		return nil
 	case <-time.After(exchangeTimeout):
 		return ErrPushProtocolTimeout
