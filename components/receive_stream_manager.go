@@ -4,10 +4,10 @@ import (
 	"errors"
 	"sync"
 
+	"github.com/rambollwong/rainbowbee/core/host"
 	"github.com/rambollwong/rainbowbee/core/manager"
 	"github.com/rambollwong/rainbowbee/core/network"
 	"github.com/rambollwong/rainbowbee/core/peer"
-	"github.com/rambollwong/rainbowbee/log"
 	"github.com/rambollwong/rainbowcat/types"
 	"github.com/rambollwong/rainbowlog"
 )
@@ -36,10 +36,12 @@ func NewReceiveStreamManager() *ReceiveStreamManager {
 		maxCount:  -1,
 		countMap:  make(map[peer.ID]int),
 		streamMap: make(map[peer.ID]map[network.Connection]*types.Set[network.ReceiveStream]),
-		logger: log.Logger.SubLogger(
-			rainbowlog.WithLabels(log.DefaultLoggerLabel, "RECEIVE-STREAM-MANAGER"),
-		),
+		logger:    nil,
 	}
+}
+
+func (r *ReceiveStreamManager) AttachHost(h host.Host) {
+	r.logger = h.Logger().SubLogger(rainbowlog.WithLabels("RECEIVE-STREAM-MGR"))
 }
 
 // Reset clears all receive streams and counts.

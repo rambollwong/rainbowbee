@@ -4,10 +4,10 @@ import (
 	"errors"
 	"sync"
 
+	"github.com/rambollwong/rainbowbee/core/host"
 	"github.com/rambollwong/rainbowbee/core/manager"
 	"github.com/rambollwong/rainbowbee/core/network"
 	"github.com/rambollwong/rainbowbee/core/peer"
-	"github.com/rambollwong/rainbowbee/log"
 	"github.com/rambollwong/rainbowlog"
 )
 
@@ -30,12 +30,16 @@ type SendStreamPoolManager struct {
 // The returned SendStreamPoolManager can be used to manage send stream pools.
 func NewSendStreamPoolManager() *SendStreamPoolManager {
 	return &SendStreamPoolManager{
-		mu:    sync.RWMutex{},
-		pools: make(map[peer.ID]map[network.Connection]manager.SendStreamPool),
-		logger: log.Logger.SubLogger(
-			rainbowlog.WithLabels(log.DefaultLoggerLabel, "SEND-STREAM-POOL-MANAGER"),
-		),
+		mu:     sync.RWMutex{},
+		pools:  make(map[peer.ID]map[network.Connection]manager.SendStreamPool),
+		logger: nil,
 	}
+}
+
+func (s *SendStreamPoolManager) AttachHost(h host.Host) {
+	s.logger = h.Logger().SubLogger(
+		rainbowlog.WithLabels("SEND-STREAM-POOL-MGR"),
+	)
 }
 
 // Reset clears all send stream pools.

@@ -9,6 +9,7 @@ import (
 	"github.com/rambollwong/rainbowbee/core/network"
 	"github.com/rambollwong/rainbowbee/core/peer"
 	"github.com/rambollwong/rainbowbee/network/tcp"
+	"github.com/rambollwong/rainbowlog"
 )
 
 // NetworkType represents the type of network.
@@ -48,7 +49,7 @@ type NetworkConfig struct {
 }
 
 // NewNetwork creates a new network instance based on the configuration.
-func (c NetworkConfig) NewNetwork() (network.Network, error) {
+func (c NetworkConfig) NewNetwork(logger *rainbowlog.Logger) (network.Network, error) {
 	var err error
 	c.localPID, err = peer.IDFromPriKey(c.PrivateKey)
 	if err != nil {
@@ -56,7 +57,7 @@ func (c NetworkConfig) NewNetwork() (network.Network, error) {
 	}
 	switch c.Type {
 	case NetworkTypeTCP:
-		return c.newTCPNetwork()
+		return c.newTCPNetwork(logger)
 	case NetworkTypeUDPQuic:
 		return c.newQUICNetwork()
 	default:
@@ -65,8 +66,9 @@ func (c NetworkConfig) NewNetwork() (network.Network, error) {
 }
 
 // newTCPNetwork creates a new TCP network instance based on the configuration.
-func (c NetworkConfig) newTCPNetwork() (network.Network, error) {
+func (c NetworkConfig) newTCPNetwork(logger *rainbowlog.Logger) (network.Network, error) {
 	var opts []tcp.Option
+	opts = append(opts, tcp.WithLogger(logger))
 	if c.Ctx != nil {
 		opts = append(opts, tcp.WithContext(c.Ctx))
 	}

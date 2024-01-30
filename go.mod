@@ -10,7 +10,7 @@ require (
 	github.com/multiformats/go-multiaddr-fmt v0.1.0
 	github.com/multiformats/go-multihash v0.0.14
 	github.com/pkg/errors v0.9.1
-	github.com/rambollwong/rainbowcat v0.0.0-20240129081543-612fd21df234
+	github.com/rambollwong/rainbowcat v0.0.0-20240130085147-7ac5a4e7ba10
 	github.com/rambollwong/rainbowlog v0.0.2
 	golang.org/x/sys v0.15.0
 	google.golang.org/protobuf v1.31.0

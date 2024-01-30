@@ -5,6 +5,7 @@ import (
 	"crypto/tls"
 
 	"github.com/rambollwong/rainbowbee/core/peer"
+	"github.com/rambollwong/rainbowlog"
 )
 
 // Option represents a configuration option for the Network instance.
@@ -57,6 +58,14 @@ func WithPIDLoader(pidLoader peer.IDLoader) Option {
 func WithLocalPID(localPID peer.ID) Option {
 	return func(n *Network) error {
 		n.localPID = localPID
+		return nil
+	}
+}
+
+// WithLogger sets the logger for the Network instance.
+func WithLogger(logger *rainbowlog.Logger) Option {
+	return func(n *Network) error {
+		n.logger = logger.SubLogger(rainbowlog.WithLabels(loggerLabel))
 		return nil
 	}
 }

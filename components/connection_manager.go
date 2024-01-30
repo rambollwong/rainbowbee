@@ -10,7 +10,6 @@ import (
 	"github.com/rambollwong/rainbowbee/core/manager"
 	"github.com/rambollwong/rainbowbee/core/network"
 	"github.com/rambollwong/rainbowbee/core/peer"
-	"github.com/rambollwong/rainbowbee/log"
 	"github.com/rambollwong/rainbowcat/types"
 	"github.com/rambollwong/rainbowlog"
 )
@@ -97,9 +96,7 @@ func NewLevelConnectionManager() *LevelConnectionManager {
 		h:                             nil,
 		expandingC:                    make(chan struct{}, 1),
 		eliminatePeers:                types.NewSet[peer.ID](),
-		logger: log.Logger.SubLogger(
-			rainbowlog.WithLabels(log.DefaultLoggerLabel, "LEVEL-CONNECTION-MANAGER"),
-		),
+		logger:                        nil,
 	}
 }
 
@@ -107,6 +104,7 @@ func (l *LevelConnectionManager) AttachHost(h host.Host) {
 	l.mu.Lock()
 	defer l.mu.Unlock()
 	l.h = h
+	l.logger = h.Logger().SubLogger(rainbowlog.WithLabels("LV-CONN-MGR"))
 }
 
 // SetStrategy sets the elimination strategy for the LevelConnectionManager.

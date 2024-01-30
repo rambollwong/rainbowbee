@@ -11,6 +11,7 @@ import (
 	"github.com/rambollwong/rainbowbee/core/peer"
 	"github.com/rambollwong/rainbowbee/core/protocol"
 	"github.com/rambollwong/rainbowbee/core/store"
+	"github.com/rambollwong/rainbowlog"
 
 	ma "github.com/multiformats/go-multiaddr"
 )
@@ -81,6 +82,9 @@ type Host interface {
 
 	// Network returns the network.Network instance associated with the host.
 	Network() network.Network
+
+	// Logger returns the logger instance of the host.
+	Logger() *rainbowlog.Logger
 }
 
 // Components is an interface that represents a collection of components that can be attached to a host.

@@ -9,7 +9,6 @@ import (
 
 	"github.com/rambollwong/rainbowbee/core/manager"
 	"github.com/rambollwong/rainbowbee/core/network"
-	"github.com/rambollwong/rainbowbee/log"
 	"github.com/rambollwong/rainbowbee/util"
 	"github.com/rambollwong/rainbowlog"
 )
@@ -59,8 +58,8 @@ func NewSendStreamPool(initSize, maxSize int, conn network.Connection) (*SendStr
 		idlePercentage:   idlePercentage,
 		closeC:           make(chan struct{}),
 		seq:              atomic.AddUint64(&sendStreamPoolSeq, 1),
-		logger: log.Logger.SubLogger(
-			rainbowlog.WithLabels(log.DefaultLoggerLabel, "SEND-STREAM-POOL"),
+		logger: conn.Network().Logger().SubLogger(
+			rainbowlog.WithLabels("SEND-STREAM-POOL"),
 		),
 	}, nil
 }

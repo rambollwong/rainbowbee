@@ -4,6 +4,7 @@ import (
 	"io"
 
 	"github.com/rambollwong/rainbowbee/core/peer"
+	"github.com/rambollwong/rainbowlog"
 )
 
 // ConnectionHandler is a function for handling connections.
@@ -26,4 +27,7 @@ type Network interface {
 
 	// LocalPeerID returns the local peer ID.
 	LocalPeerID() peer.ID
+
+	// Logger returns the logger instance.
+	Logger() *rainbowlog.Logger
 }

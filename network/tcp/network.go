@@ -11,7 +11,6 @@ import (
 	"github.com/rambollwong/rainbowbee/core/network"
 	"github.com/rambollwong/rainbowbee/core/peer"
 	"github.com/rambollwong/rainbowbee/core/reuse"
-	"github.com/rambollwong/rainbowbee/log"
 	"github.com/rambollwong/rainbowbee/util"
 	"github.com/rambollwong/rainbowlog"
 
@@ -70,7 +69,7 @@ func NewNetwork(opt ...Option) (*Network, error) {
 		tcpListeners:   make([]net.Listener, 0, 2),
 		listening:      false,
 		closeC:         make(chan struct{}),
-		logger:         log.Logger.SubLogger(rainbowlog.WithLabels(log.DefaultLoggerLabel, loggerLabel)),
+		logger:         nil,
 	}
 
 	if err := n.apply(opt...); err != nil {
@@ -487,4 +486,8 @@ func (n *Network) Closed() bool {
 
 func (n *Network) LocalPeerID() peer.ID {
 	return n.localPID
+}
+
+func (n *Network) Logger() *rainbowlog.Logger {
+	return n.logger
 }

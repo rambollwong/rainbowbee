@@ -8,7 +8,6 @@ import (
 	"github.com/rambollwong/rainbowbee/core/host"
 	"github.com/rambollwong/rainbowbee/core/manager"
 	"github.com/rambollwong/rainbowbee/core/peer"
-	"github.com/rambollwong/rainbowbee/log"
 	"github.com/rambollwong/rainbowcat/util"
 	"github.com/rambollwong/rainbowlog"
 )
@@ -57,9 +56,7 @@ func NewConnectionSupervisor(tryTimes int) *ConnectionSupervisor {
 		actuators:                 make(map[peer.ID]*dialActuator),
 		allNecessaryPeerConnected: false,
 		hostNotifiee:              &host.NotifieeBundle{},
-		logger: log.Logger.SubLogger(
-			rainbowlog.WithLabels(log.DefaultLoggerLabel, "CONN-SUPERVISOR"),
-		),
+		logger:                    nil,
 	}
 	cs.hostNotifiee.OnPeerDisconnectedFunc = cs.NoticePeerDisconnected
 	return cs
@@ -69,6 +66,7 @@ func (c *ConnectionSupervisor) AttachHost(h host.Host) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	c.host = h
+	c.logger = h.Logger().SubLogger(rainbowlog.WithLabels("CONN-SPV"))
 }
 
 // checkConn checks the connection status of the necessary peers and performs dialing if needed.

@@ -14,7 +14,6 @@ import (
 	"github.com/rambollwong/rainbowbee/core/network"
 	"github.com/rambollwong/rainbowbee/core/peer"
 	"github.com/rambollwong/rainbowbee/core/protocol"
-	"github.com/rambollwong/rainbowbee/log"
 	"github.com/rambollwong/rainbowbee/util"
 	catutil "github.com/rambollwong/rainbowcat/util"
 	"github.com/rambollwong/rainbowlog"
@@ -53,14 +52,13 @@ func NewProtocolExchanger(protocolManager manager.ProtocolManager) *ProtocolExch
 		protocolMgr: protocolManager,
 		mu:          sync.RWMutex{},
 		pushSignalC: make(map[peer.ID]chan struct{}),
-		logger: log.Logger.SubLogger(
-			rainbowlog.WithLabels(log.DefaultLoggerLabel, "PROTOCOL_EXCHANGER"),
-		),
+		logger:      nil,
 	}
 }
 
 func (p *ProtocolExchanger) AttachHost(h host.Host) {
 	p.host = h
+	p.logger = h.Logger().SubLogger(rainbowlog.WithLabels("PROTOCOL-EXR"))
 }
 
 // ProtocolID returns the protocol ID of the ProtocolExchanger.

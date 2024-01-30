@@ -16,9 +16,9 @@ import (
 	"github.com/rambollwong/rainbowbee/core/peer"
 	"github.com/rambollwong/rainbowbee/core/protocol"
 	"github.com/rambollwong/rainbowbee/core/store"
-	"github.com/rambollwong/rainbowbee/log"
 	"github.com/rambollwong/rainbowbee/peerstore"
 	"github.com/rambollwong/rainbowbee/util"
+	"github.com/rambollwong/rainbowcat/pipeline"
 	"github.com/rambollwong/rainbowcat/types"
 	catutil "github.com/rambollwong/rainbowcat/util"
 	"github.com/rambollwong/rainbowlog"
@@ -29,6 +29,11 @@ const (
 	defaultSupervisorTryTimes = 10
 	defaultInitSendStreamSize = 10
 	defaultMaxSendStreamSize  = 50
+
+	pipelineCount                                = 3
+	defaultPayloadUnmarshalerConcurrency   uint8 = 100
+	defaultPayloadHandlerRouterConcurrency uint8 = 100
+	defaultHandlerExecutorConcurrency      uint8 = 200
 )
 
 var (
@@ -51,9 +56,13 @@ type hostConfig struct {
 	BlackNetAddresses []string                 // The blacklisted network addresses.
 	BlackPIDs         []peer.ID                // The blacklisted peer IDs.
 	CompressMsg       bool                     // Whether to compress messages.
+
+	PayloadUnmarshalerConcurrency   uint8
+	PayloadHandlerRouterConcurrency uint8
+	HandlerExecutorConcurrency      uint8
 }
 
-// Host is the main struct representing the Rainbowbee host.
+// Host is the main struct representing the Rainbow-bee host.
 type Host struct {
 	cfg hostConfig
 
@@ -90,6 +99,8 @@ type Host struct {
 	connExclusive     map[peer.ID]network.Connection
 	connExclusiveLock sync.Mutex
 
+	handleMsgPayloadPipeline *pipeline.ParallelTaskPipeline
+
 	// chanel
 
 	pushProtocolSignalC chan struct{}
@@ -101,10 +112,14 @@ type Host struct {
 }
 
 // NewHost creates a new host with the provided options.
-func NewHost(opts ...Option) (h *Host, err error) {
+func NewHost(logger *rainbowlog.Logger, opts ...Option) (h *Host, err error) {
 	// Initialize the host with default values.
 	h = &Host{
-		cfg:                   hostConfig{},
+		cfg: hostConfig{
+			PayloadUnmarshalerConcurrency:   defaultPayloadUnmarshalerConcurrency,
+			PayloadHandlerRouterConcurrency: defaultPayloadHandlerRouterConcurrency,
+			HandlerExecutorConcurrency:      defaultHandlerExecutorConcurrency,
+		},
 		once:                  sync.Once{},
 		mu:                    sync.RWMutex{},
 		ctx:                   context.Background(),
@@ -124,7 +139,7 @@ func NewHost(opts ...Option) (h *Host, err error) {
 		pushProtocolSignalC:   make(chan struct{}, 2),
 		notifyConnC:           make(chan network.Connection),
 		closeC:                make(chan struct{}),
-		logger:                log.Logger.SubLogger(rainbowlog.WithLabels(log.DefaultLoggerLabel, loggerLabel)),
+		logger:                logger.SubLogger(rainbowlog.WithLabels(loggerLabel)),
 	}
 
 	// Apply the provided options to the host.
@@ -133,7 +148,7 @@ func NewHost(opts ...Option) (h *Host, err error) {
 	}
 
 	// Initialize the network.
-	h.nw, err = h.nwCfg.NewNetwork()
+	h.nw, err = h.nwCfg.NewNetwork(h.logger)
 	if err != nil {
 		return nil, err
 	}
@@ -251,6 +266,12 @@ func (h *Host) Start() (err error) {
 		// Run the host's main loop.
 		h.runLoop()
 
+		// Run the handle msg pipeline
+		err = h.runHandleMsgPipeline()
+		if err != nil {
+			return
+		}
+
 		// Listen on the specified listen addresses.
 		err = h.nw.Listen(h.ctx, h.cfg.ListenAddresses...)
 		if err != nil {
@@ -299,10 +320,17 @@ func (h *Host) Stop() error {
 		return err
 	}
 
+	// Close pipeline
+	h.handleMsgPayloadPipeline.Close()
+
 	// Log an informational message indicating that the host has stopped.
 	h.logger.Info().Msg("host stopped.").Done()
 
 	return nil
+}
+
+func (h *Host) Logger() *rainbowlog.Logger {
+	return h.logger
 }
 
 // Context returns the context associated with the host.
@@ -778,40 +806,6 @@ func (h *Host) handleClosingConn(conn network.Connection) {
 	}
 }
 
-// handleReceiveStreamData processes received stream data.
-func (h *Host) handleReceiveStreamData(dataBz []byte, pid peer.ID) {
-	// If the received data is empty, return without further processing.
-	if len(dataBz) == 0 {
-		return
-	}
-
-	// Create an empty PayloadPkg struct to unmarshal the received data.
-	pkg := &protocol.PayloadPkg{}
-
-	// Unmarshal the received data into the PayloadPkg struct.
-	if err := pkg.Unmarshal(dataBz); err != nil {
-		// If unmarshaling fails, log a warning message and drop the payload.
-		h.logger.Warn().
-			Msg("failed to unmarshal payload package, drop it.").
-			Str("remote_pid", pid.String()).
-			Err(err).
-			Done()
-		return
-	}
-
-	// Retrieve the payload handler associated with the protocol ID of the payload package.
-	payloadHandler := h.protocolMgr.Handler(pkg.ProtocolID())
-
-	// If the payload handler is not found (nil), log a warning message and drop the payload.
-	if payloadHandler == nil {
-		h.logger.Warn().
-			Msg("payload handler not found, drop the payload.").
-			Str("protocol", pkg.ProtocolID().String()).
-			Str("remote_pid", pid.String()).
-			Done()
-	}
-}
-
 // receiveStreamHandlerLoop is a loop that handles the receive stream.
 func (h *Host) receiveStreamHandlerLoop(receiveStream network.ReceiveStream) {
 	conn := receiveStream.Conn()
@@ -819,14 +813,6 @@ func (h *Host) receiveStreamHandlerLoop(receiveStream network.ReceiveStream) {
 
 Loop:
 	for {
-		// Check if the receive stream's connection is closed.
-		if conn.Closed() {
-			// Call the handleClosingConn method to handle the closing connection.
-			h.handleClosingConn(conn)
-			// Break the loop.
-			break Loop
-		}
-
 		// Read the length of the incoming data package.
 		dataLength, _, e := util.ReadPackageLength(receiveStream)
 		if e != nil {
@@ -843,7 +829,10 @@ Loop:
 			break Loop
 		}
 
-		h.handleReceiveStreamData(dataBz, conn.RemotePeerID())
+		h.handleMsgPayloadPipeline.PushJob(&pkgBzRemotePIDPair{
+			pkgBz:     dataBz,
+			remotePID: conn.RemotePeerID(),
+		})
 	}
 
 	// Handle errors that occurred during the loop.
@@ -874,7 +863,7 @@ Loop:
 		}
 
 		// Log a warning message about the failure to read data from the receive stream.
-		h.logger.Warn().
+		h.logger.Debug().
 			Msg("failed to read data from the receive stream.").
 			Str("remote_pid", conn.RemotePeerID().String()).
 			Str("remote_addr", conn.RemoteAddr().String()).
@@ -883,7 +872,14 @@ Loop:
 
 		// If all Receive Streams for a connection are removed, we consider the connection to be disconnected
 		if h.receiveStreamMgr.GetConnReceiveStreamCount(conn) == 0 {
+			h.logger.Debug().
+				Msg("all receive streams of the connection were removed, close the connection.").
+				Str("remote_pid", conn.RemotePeerID().String()).
+				Str("remote_addr", conn.RemoteAddr().String()).
+				Done()
 			_ = conn.Close()
+			// Call the handleClosingConn method to handle the closing connection.
+			h.handleClosingConn(conn)
 		}
 	}
 }
@@ -917,6 +913,7 @@ Loop:
 			if conn.Closed() {
 				// If the connection is closed, call the handleClosingConn method.
 				h.handleClosingConn(conn)
+				break Loop
 			}
 		}
 
