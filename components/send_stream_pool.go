@@ -9,6 +9,7 @@ import (
 
 	"github.com/rambollwong/rainbowbee/core/manager"
 	"github.com/rambollwong/rainbowbee/core/network"
+	"github.com/rambollwong/rainbowbee/core/safe"
 	"github.com/rambollwong/rainbowbee/util"
 	"github.com/rambollwong/rainbowlog"
 )
@@ -93,7 +94,7 @@ func (s *SendStreamPool) InitStreams() (err error) {
 			Int("init_size", s.initSize).
 			Str("remote_pid", s.conn.RemotePeerID().String()).
 			Done()
-		go s.expandLoop()
+		safe.LoggerGo(s.logger, s.expandLoop)
 	})
 	return err
 }

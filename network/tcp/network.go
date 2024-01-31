@@ -11,6 +11,7 @@ import (
 	"github.com/rambollwong/rainbowbee/core/network"
 	"github.com/rambollwong/rainbowbee/core/peer"
 	"github.com/rambollwong/rainbowbee/core/reuse"
+	"github.com/rambollwong/rainbowbee/core/safe"
 	"github.com/rambollwong/rainbowbee/util"
 	"github.com/rambollwong/rainbowlog"
 
@@ -432,7 +433,9 @@ func (n *Network) Listen(ctx context.Context, addresses ...ma.Multiaddr) error {
 			}
 
 			for _, listener := range tcpListeners {
-				go n.listenerAcceptLoop(listener)
+				safe.LoggerGo(n.logger, func() {
+					n.listenerAcceptLoop(listener)
+				})
 
 				localAddress, e := manet.FromNetAddr(listener.Addr())
 				if e != nil {

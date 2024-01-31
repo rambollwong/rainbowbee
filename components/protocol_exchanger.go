@@ -14,6 +14,7 @@ import (
 	"github.com/rambollwong/rainbowbee/core/network"
 	"github.com/rambollwong/rainbowbee/core/peer"
 	"github.com/rambollwong/rainbowbee/core/protocol"
+	"github.com/rambollwong/rainbowbee/core/safe"
 	"github.com/rambollwong/rainbowbee/util"
 	catutil "github.com/rambollwong/rainbowcat/util"
 	"github.com/rambollwong/rainbowlog"
@@ -159,7 +160,7 @@ func (p *ProtocolExchanger) ExchangeProtocol(conn network.Connection) (protocols
 	defer cancelFunc()
 	signalC := make(chan struct{})
 
-	go func() {
+	safe.LoggerGo(p.logger, func() {
 		protocols, err = p.exchangeProtocol(conn)
 
 		// Notify the caller that the exchange is complete.
@@ -167,7 +168,7 @@ func (p *ProtocolExchanger) ExchangeProtocol(conn network.Connection) (protocols
 		case <-ctx.Done():
 		case signalC <- struct{}{}:
 		}
-	}()
+	})
 
 	// Wait for the exchange to complete or timeout.
 	select {

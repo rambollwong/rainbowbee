@@ -8,6 +8,7 @@ import (
 	"github.com/rambollwong/rainbowbee/core/host"
 	"github.com/rambollwong/rainbowbee/core/manager"
 	"github.com/rambollwong/rainbowbee/core/peer"
+	"github.com/rambollwong/rainbowbee/core/safe"
 	"github.com/rambollwong/rainbowcat/util"
 	"github.com/rambollwong/rainbowlog"
 )
@@ -99,7 +100,7 @@ func (c *ConnectionSupervisor) checkConn() {
 		if act.finished || act.giveUp {
 			act.reset()
 		}
-		go act.run()
+		safe.LoggerGo(c.logger, act.run)
 	}
 }
 
@@ -125,7 +126,7 @@ func (c *ConnectionSupervisor) loop() {
 func (c *ConnectionSupervisor) Start() error {
 	c.once.Do(func() {
 		c.closeC = make(chan struct{})
-		go c.loop()
+		safe.LoggerGo(c.logger, c.loop)
 		c.signalC <- struct{}{}
 		c.host.Notify(c.hostNotifiee)
 	})

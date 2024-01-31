@@ -10,6 +10,7 @@ import (
 	"github.com/rambollwong/rainbowbee/core/manager"
 	"github.com/rambollwong/rainbowbee/core/network"
 	"github.com/rambollwong/rainbowbee/core/peer"
+	"github.com/rambollwong/rainbowbee/core/safe"
 	"github.com/rambollwong/rainbowcat/types"
 	"github.com/rambollwong/rainbowlog"
 )
@@ -184,9 +185,9 @@ func (l *LevelConnectionManager) getLowLevelConnections(pid peer.ID) (*types.Set
 // closeHighLevelConnWithIdx closes all connections in the high level connections set at the given index.
 func (l *LevelConnectionManager) closeLowLevelConnWithIdx(idx int) {
 	l.lowLevelConn[idx].connSet.Range(func(c network.Connection) bool {
-		go func(connToClose network.Connection) {
-			_ = connToClose.Close()
-		}(c)
+		safe.LoggerGo(l.logger, func() {
+			_ = c.Close()
+		})
 		return true
 	})
 }
@@ -194,9 +195,9 @@ func (l *LevelConnectionManager) closeLowLevelConnWithIdx(idx int) {
 // closeLowLevelConnRandom closes a random connection in the low level connections set and returns the eliminated peer ID.
 func (l *LevelConnectionManager) closeHighLevelConnWithIdx(idx int) {
 	l.highLevelConn[idx].connSet.Range(func(c network.Connection) bool {
-		go func(connToClose network.Connection) {
-			_ = connToClose.Close()
-		}(c)
+		safe.LoggerGo(l.logger, func() {
+			_ = c.Close()
+		})
 		return true
 	})
 }

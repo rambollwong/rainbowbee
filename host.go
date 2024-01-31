@@ -15,6 +15,7 @@ import (
 	"github.com/rambollwong/rainbowbee/core/network"
 	"github.com/rambollwong/rainbowbee/core/peer"
 	"github.com/rambollwong/rainbowbee/core/protocol"
+	"github.com/rambollwong/rainbowbee/core/safe"
 	"github.com/rambollwong/rainbowbee/core/store"
 	"github.com/rambollwong/rainbowbee/peerstore"
 	"github.com/rambollwong/rainbowbee/util"
@@ -646,16 +647,16 @@ func (h *Host) pushProtocolsToOthers() {
 	wg.Add(len(others))
 	for _, other := range others {
 		other := other
-		go func(pid peer.ID) {
+		safe.LoggerGo(h.logger, func() {
 			defer wg.Done()
-			if err := h.protocolExr.PushProtocols(pid); err != nil {
+			if err := h.protocolExr.PushProtocols(other); err != nil {
 				h.logger.Warn().
 					Msg("failed to push protocols.").
-					Str("remote_pid", pid.String()).
+					Str("remote_pid", other.String()).
 					Err(err).
 					Done()
 			}
-		}(other)
+		})
 	}
 	wg.Wait()
 }
@@ -675,8 +676,8 @@ Loop:
 
 // runLoop starts the main event loops for handling connection notifications and push protocol signals.
 func (h *Host) runLoop() {
-	go h.loop()
-	go h.pushProtocolSignalLoop()
+	safe.LoggerGo(h.logger, h.loop)
+	safe.LoggerGo(h.logger, h.pushProtocolSignalLoop)
 }
 
 // connExclusiveCheck performs an exclusive check for a network connection.
@@ -898,7 +899,9 @@ func (h *Host) handleReceiveStream(receiveStream network.ReceiveStream) {
 	}
 
 	// Start the receive stream handler loop in a goroutine.
-	go h.receiveStreamHandlerLoop(receiveStream)
+	safe.LoggerGo(h.logger, func() {
+		h.receiveStreamHandlerLoop(receiveStream)
+	})
 }
 
 // acceptReceiveStreamLoop is a loop that accepts receive streams on the given network connection.
@@ -1052,14 +1055,16 @@ func (h *Host) handleNewConnection(conn network.Connection) (bool, error) {
 			return false, err
 		}
 		if myProtocolsLength != len(h.protocolMgr.SupportedProtocolsOfPeer(h.ID())) {
-			go func() {
+			safe.LoggerGo(h.logger, func() {
 				err := h.protocolExr.PushProtocols(rPID)
 				h.logger.Info().Msg("re_push protocols to other").Str("other", rPID.String()).Err(err).Done()
-			}()
+			})
 		}
 	}
 
-	go h.acceptReceiveStreamLoop(conn)
+	safe.LoggerGo(h.logger, func() {
+		h.acceptReceiveStreamLoop(conn)
+	})
 
 	// todo go h.acceptBidirectionalStreamLoop(conn)
 
