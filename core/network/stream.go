@@ -20,9 +20,3 @@ type ReceiveStream interface {
 	stream
 	io.Reader
 }
-
-// Stream is an interface that defines both ways to send and receive data.
-type Stream interface {
-	SendStream
-	ReceiveStream
-}

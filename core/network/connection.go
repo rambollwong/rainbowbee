@@ -41,11 +41,4 @@ type Connection interface {
 	// AcceptReceiveStream accepts a receiving stream with the connection.
 	// It will block until a new receiving stream is accepted or the connection is closed.
 	AcceptReceiveStream() (ReceiveStream, error)
-
-	// OpenBidirectionalStream tries to open a bidirectional stream with the connection.
-	OpenBidirectionalStream() (Stream, error)
-
-	// AcceptBidirectionalStream accepts a bidirectional stream with the connection.
-	// It will block until a new bidirectional stream is accepted or the connection is closed.
-	AcceptBidirectionalStream() (Stream, error)
 }

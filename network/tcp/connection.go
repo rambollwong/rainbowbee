@@ -11,7 +11,6 @@ import (
 	"github.com/libp2p/go-yamux/v4"
 	ma "github.com/multiformats/go-multiaddr"
 	manet "github.com/multiformats/go-multiaddr/net"
-
 	"github.com/rambollwong/rainbowbee/core/network"
 	"github.com/rambollwong/rainbowbee/core/peer"
 	"github.com/rambollwong/rainbowbee/util"
@@ -20,8 +19,7 @@ import (
 var (
 	_ network.Connection = (*Conn)(nil)
 
-	defaultYamuxConfig          = yamux.DefaultConfig()
-	defaultYamuxConfigForStream = yamux.DefaultConfig()
+	defaultYamuxConfig = yamux.DefaultConfig()
 )
 
 func init() {
@@ -31,10 +29,6 @@ func init() {
 	defaultYamuxConfig.ConnectionWriteTimeout = 1 * time.Second
 	defaultYamuxConfig.EnableKeepAlive = true
 	defaultYamuxConfig.KeepAliveInterval = 10 * time.Second
-	defaultYamuxConfigForStream.MaxStreamWindowSize = 16 << 20
-	defaultYamuxConfigForStream.LogOutput = io.Discard
-	defaultYamuxConfigForStream.ReadBufSize = 0
-	defaultYamuxConfigForStream.EnableKeepAlive = false
 }
 
 type Conn struct {
@@ -44,9 +38,12 @@ type Conn struct {
 	nw *Network
 	c  net.Conn
 
-	sess              *yamux.Session
-	sessOneWay        *yamux.Session
-	sessBidirectional *yamux.Session
+	sess *yamux.Session
+
+	usableSSLock sync.Mutex
+	usableSS     map[*yamuxReceiveStream]struct{}
+	usableRSLock sync.Mutex
+	usableRS     map[*yamuxSendStream]struct{}
 
 	localAddr  ma.Multiaddr
 	localPID   peer.ID
@@ -60,19 +57,21 @@ type Conn struct {
 func NewConn(ctx context.Context, nw *Network, c net.Conn,
 	dir network.Direction, remoteAddr ma.Multiaddr) (*Conn, error) {
 	conn := &Conn{
-		BasicStatus:       *network.NewStatus(dir, time.Now(), nil),
-		ctx:               ctx,
-		nw:                nw,
-		c:                 nil,
-		sess:              nil,
-		sessOneWay:        nil,
-		sessBidirectional: nil,
-		localAddr:         nil,
-		remoteAddr:        nil,
-		localPID:          nw.LocalPeerID(),
-		remotePID:         "",
-		closeC:            make(chan struct{}),
-		closeOnce:         sync.Once{},
+		BasicStatus:  *network.NewStatus(dir, time.Now(), nil),
+		ctx:          ctx,
+		nw:           nw,
+		c:            nil,
+		sess:         nil,
+		usableSSLock: sync.Mutex{},
+		usableRSLock: sync.Mutex{},
+		usableSS:     make(map[*yamuxReceiveStream]struct{}),
+		usableRS:     make(map[*yamuxSendStream]struct{}),
+		localAddr:    nil,
+		remoteAddr:   nil,
+		localPID:     nw.LocalPeerID(),
+		remotePID:    "",
+		closeC:       make(chan struct{}),
+		closeOnce:    sync.Once{},
 	}
 	var err error
 	conn.localAddr, err = manet.FromNetAddr(c.LocalAddr())
@@ -98,12 +97,6 @@ func (c *Conn) Close() error {
 	c.closeOnce.Do(func() {
 		c.SetClosed()
 		close(c.closeC)
-		if err = c.sessBidirectional.Close(); err != nil {
-			return
-		}
-		if err = c.sessOneWay.Close(); err != nil {
-			return
-		}
 		if err = c.sess.Close(); err != nil {
 			return
 		}
@@ -117,9 +110,6 @@ func (c *Conn) Close() error {
 func (c *Conn) closed() bool {
 	select {
 	case <-c.closeC:
-		return true
-	case <-c.sessOneWay.CloseChan():
-		_ = c.Close()
 		return true
 	case <-c.sess.CloseChan():
 		_ = c.Close()
@@ -172,20 +162,6 @@ func (c *Conn) AcceptReceiveStream() (network.ReceiveStream, error) {
 		return nil, ErrConnClosed
 	}
 	return acceptReceiveStream(c)
-}
-
-func (c *Conn) OpenBidirectionalStream() (network.Stream, error) {
-	if c.closed() {
-		return nil, ErrConnClosed
-	}
-	return openBidirectionalStream(c)
-}
-
-func (c *Conn) AcceptBidirectionalStream() (network.Stream, error) {
-	if c.closed() {
-		return nil, ErrConnClosed
-	}
-	return acceptBidirectionalStream(c)
 }
 
 // handshakeInbound handshake with remote peer over new inbound connection
@@ -291,42 +267,9 @@ func (c *Conn) attachYamuxInbound(conn net.Conn) error {
 		_ = conn.Close()
 		return err
 	}
-	virtualConnOneWay, err := sess.Accept()
-	if err != nil {
-		_ = sess.Close()
-		_ = conn.Close()
-		return err
-	}
-	virtualConnBidirectional, err := sess.Accept()
-	if err != nil {
-		_ = virtualConnOneWay.Close()
-		_ = sess.Close()
-		_ = conn.Close()
-		return err
-	}
 
-	sessOneWay, err := yamux.Server(virtualConnOneWay, defaultYamuxConfigForStream, nil)
-	if err != nil {
-		_ = virtualConnBidirectional.Close()
-		_ = virtualConnOneWay.Close()
-		_ = sess.Close()
-		_ = conn.Close()
-		return err
-	}
-
-	sessBidirectional, err := yamux.Server(virtualConnBidirectional, defaultYamuxConfigForStream, nil)
-	if err != nil {
-		_ = sessOneWay.Close()
-		_ = virtualConnBidirectional.Close()
-		_ = virtualConnOneWay.Close()
-		_ = sess.Close()
-		_ = conn.Close()
-		return err
-	}
 	c.c = conn
 	c.sess = sess
-	c.sessOneWay = sessOneWay
-	c.sessBidirectional = sessBidirectional
 	return nil
 }
 
@@ -338,42 +281,9 @@ func (c *Conn) attachYamuxOutbound(conn net.Conn) error {
 		_ = conn.Close()
 		return err
 	}
-	virtualConnOneWay, err := sess.Open(c.ctx)
-	if err != nil {
-		_ = sess.Close()
-		_ = conn.Close()
-		return err
-	}
-	virtualConnBidirectional, err := sess.Open(c.ctx)
-	if err != nil {
-		_ = virtualConnOneWay.Close()
-		_ = sess.Close()
-		_ = conn.Close()
-		return err
-	}
 
-	sessOneWay, err := yamux.Client(virtualConnOneWay, defaultYamuxConfigForStream, nil)
-	if err != nil {
-		_ = virtualConnBidirectional.Close()
-		_ = virtualConnOneWay.Close()
-		_ = sess.Close()
-		_ = conn.Close()
-		return err
-	}
-
-	sessBidirectional, err := yamux.Client(virtualConnBidirectional, defaultYamuxConfigForStream, nil)
-	if err != nil {
-		_ = sessOneWay.Close()
-		_ = virtualConnBidirectional.Close()
-		_ = virtualConnOneWay.Close()
-		_ = sess.Close()
-		_ = conn.Close()
-		return err
-	}
 	c.c = conn
 	c.sess = sess
-	c.sessOneWay = sessOneWay
-	c.sessBidirectional = sessBidirectional
 	return nil
 }
 
@@ -406,4 +316,60 @@ func (c *Conn) handshakeAndAttachYamux(conn net.Conn, remoteAddr ma.Multiaddr) e
 		return ErrUnknownDirection
 	}
 	return nil
+}
+
+func (c *Conn) putUsableSendStream(ss *yamuxReceiveStream) {
+	c.usableSSLock.Lock()
+	defer c.usableSSLock.Unlock()
+	c.usableSS[ss] = struct{}{}
+}
+
+func (c *Conn) getUsableSendStream() (ss *yamuxReceiveStream, ok bool) {
+	c.usableSSLock.Lock()
+	defer c.usableSSLock.Unlock()
+	var closed []*yamuxReceiveStream
+	for s := range c.usableSS {
+		s := s
+		if s.Closed() {
+			_ = s.yamuxStream.ys.CloseWrite()
+			closed = append(closed, s)
+			continue
+		}
+		ss = s
+		ok = true
+		break
+	}
+	for _, stream := range closed {
+		delete(c.usableSS, stream)
+	}
+	delete(c.usableSS, ss)
+	return ss, ok
+}
+
+func (c *Conn) putUsableReceiveStream(rs *yamuxSendStream) {
+	c.usableRSLock.Lock()
+	defer c.usableRSLock.Unlock()
+	c.usableRS[rs] = struct{}{}
+}
+
+func (c *Conn) getUsableReceiveStream() (rs *yamuxSendStream, ok bool) {
+	c.usableRSLock.Lock()
+	defer c.usableRSLock.Unlock()
+	var closed []*yamuxSendStream
+	for s := range c.usableRS {
+		s := s
+		if s.Closed() {
+			_ = s.yamuxStream.ys.CloseRead()
+			closed = append(closed, s)
+			continue
+		}
+		rs = s
+		ok = true
+		break
+	}
+	for _, stream := range closed {
+		delete(c.usableRS, stream)
+	}
+	delete(c.usableRS, rs)
+	return rs, ok
 }
