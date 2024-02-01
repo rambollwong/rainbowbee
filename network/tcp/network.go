@@ -197,7 +197,6 @@ func (n *Network) Dial(ctx context.Context, remoteAddr ma.Multiaddr) (network.Co
 	case <-n.ctx.Done():
 		return nil, nil
 	case <-n.closeC:
-
 		return nil, nil
 	case n.connC <- conn:
 	}
@@ -397,6 +396,8 @@ func (n *Network) Closed() bool {
 	}
 	select {
 	case <-n.closeC:
+		return true
+	case <-n.ctx.Done():
 		return true
 	default:
 		return false

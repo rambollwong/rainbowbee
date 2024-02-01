@@ -26,13 +26,14 @@ type ConnectionSupervisor struct {
 
 	necessaryPeer map[peer.ID]ma.Multiaddr
 
-	watcherTimer *time.Timer
-	signalC      chan struct{}
-	closeC       chan struct{}
+	watcherTicker *time.Ticker
+	signalC       chan struct{}
+	closeC        chan struct{}
 
-	tryTimes                  int
-	actuators                 map[peer.ID]*dialActuator
-	allNecessaryPeerConnected bool
+	tryTimes  int
+	actuators map[peer.ID]*dialActuator
+
+	allConnected bool
 
 	hostNotifiee *host.NotifieeBundle
 
@@ -46,18 +47,18 @@ func NewConnectionSupervisor(tryTimes int) *ConnectionSupervisor {
 		tryTimes = DefaultTryTimes
 	}
 	cs := &ConnectionSupervisor{
-		mu:                        sync.RWMutex{},
-		once:                      sync.Once{},
-		host:                      nil,
-		necessaryPeer:             make(map[peer.ID]ma.Multiaddr),
-		watcherTimer:              nil,
-		signalC:                   make(chan struct{}, 1),
-		closeC:                    make(chan struct{}),
-		tryTimes:                  tryTimes,
-		actuators:                 make(map[peer.ID]*dialActuator),
-		allNecessaryPeerConnected: false,
-		hostNotifiee:              &host.NotifieeBundle{},
-		logger:                    nil,
+		mu:            sync.RWMutex{},
+		once:          sync.Once{},
+		host:          nil,
+		necessaryPeer: make(map[peer.ID]ma.Multiaddr),
+		watcherTicker: nil,
+		signalC:       make(chan struct{}, 1),
+		closeC:        make(chan struct{}),
+		tryTimes:      tryTimes,
+		actuators:     make(map[peer.ID]*dialActuator),
+		allConnected:  false,
+		hostNotifiee:  &host.NotifieeBundle{},
+		logger:        nil,
 	}
 	cs.hostNotifiee.OnPeerDisconnectedFunc = cs.NoticePeerDisconnected
 	return cs
@@ -68,52 +69,66 @@ func (c *ConnectionSupervisor) AttachHost(h host.Host) {
 	defer c.mu.Unlock()
 	c.host = h
 	c.logger = h.Logger().SubLogger(rainbowlog.WithLabels("CONN-SPV"))
+	c.host.Notify(c.hostNotifiee)
 }
 
 // checkConn checks the connection status of the necessary peers and performs dialing if needed.
 func (c *ConnectionSupervisor) checkConn() {
-	c.mu.RLock()
-	defer c.mu.RUnlock()
+	c.mu.Lock()
+	defer c.mu.Unlock()
 	// If there are no necessary peers, return.
-	if len(c.necessaryPeer) == 0 {
+	if len(c.necessaryPeer) == 0 || c.allConnected {
 		return
 	}
 	currentConnected := 0
 	for pid, addr := range c.necessaryPeer {
 		// Skip the host itself and already connected peers.
-		if pid == c.host.ID() || c.host.ConnectionManager().Connected(pid) {
+		if pid == c.host.ID() {
+			continue
+		}
+		if c.host.ConnectionManager().Connected(pid) {
 			currentConnected++
 			act, ok := c.actuators[pid]
 			if ok {
-				act.finished = true
+				act.SetFinished()
 				delete(c.actuators, pid)
 			}
 			continue
 		}
-		c.allNecessaryPeerConnected = false
+		c.allConnected = false
 		act, ok := c.actuators[pid]
 		if !ok {
 			act = newDialActuator(pid, addr, c, c.tryTimes)
 			c.actuators[pid] = act
 		}
-		// Reset the actuator if it has finished or given up.
-		if act.finished || act.giveUp {
-			act.reset()
+
+		// Skip if it has been given up.
+		if act.GiveUp() {
+			continue
 		}
-		safe.LoggerGo(c.logger, act.run)
+
+		// Reset the actuator if it has finished.
+		if act.Finished() {
+			act.Reset()
+		}
+		safe.LoggerGo(c.logger, act.Run)
+	}
+	if currentConnected == len(c.necessaryPeer) {
+		c.allConnected = true
+		c.logger.Info().Msg("all necessary peers connected.").Done()
 	}
 }
 
 // loop is the main loop of the ConnectionSupervisor.
 func (c *ConnectionSupervisor) loop() {
-	c.watcherTimer = time.NewTimer(5 * time.Second)
+	c.watcherTicker = time.NewTicker(5 * time.Second)
 	for {
 		select {
 		case <-c.closeC:
 			return
 		case <-c.signalC:
 			c.checkConn()
-		case <-c.watcherTimer.C:
+		case <-c.watcherTicker.C:
 			select {
 			case c.signalC <- struct{}{}:
 			default:
@@ -128,7 +143,6 @@ func (c *ConnectionSupervisor) Start() error {
 		c.closeC = make(chan struct{})
 		safe.LoggerGo(c.logger, c.loop)
 		c.signalC <- struct{}{}
-		c.host.Notify(c.hostNotifiee)
 	})
 	return nil
 }
@@ -156,6 +170,7 @@ func (c *ConnectionSupervisor) RemovePeerAddr(pid peer.ID) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	delete(c.necessaryPeer, pid)
+	delete(c.actuators, pid)
 }
 
 // RemoveAllPeer removes all necessary peers.
@@ -167,12 +182,12 @@ func (c *ConnectionSupervisor) RemoveAllPeer() {
 
 // NoticePeerDisconnected is called when a necessary peer is disconnected.
 func (c *ConnectionSupervisor) NoticePeerDisconnected(pid peer.ID) {
-	c.mu.RLock()
+	c.mu.Lock()
+	defer c.mu.Unlock()
 	if _, ok := c.necessaryPeer[pid]; !ok {
-		c.mu.RUnlock()
 		return
 	}
-	c.mu.RUnlock()
+	c.allConnected = false
 	select {
 	case <-c.closeC:
 	case c.signalC <- struct{}{}:
@@ -181,6 +196,7 @@ func (c *ConnectionSupervisor) NoticePeerDisconnected(pid peer.ID) {
 }
 
 type dialActuator struct {
+	mu        sync.RWMutex
 	pid       peer.ID
 	peerAddr  ma.Multiaddr
 	fibonacci []int64
@@ -206,22 +222,54 @@ func newDialActuator(pid peer.ID, addr ma.Multiaddr, supervisor *ConnectionSuper
 	}
 }
 
-// reset resets the state of the dialActuator.
-func (a *dialActuator) reset() {
+func (a *dialActuator) GiveUp() bool {
+	a.mu.RLock()
+	defer a.mu.RUnlock()
+	return a.giveUp
+}
+
+func (a *dialActuator) Finished() bool {
+	a.mu.RLock()
+	defer a.mu.RUnlock()
+	return a.finished
+}
+
+// Reset resets the state of the dialActuator.
+func (a *dialActuator) Reset() {
+	a.mu.Lock()
+	defer a.mu.Unlock()
 	a.tryTimes = 0
 	a.giveUp = false
 	a.finished = false
 }
 
-// run executes the dialing process to establish a connection with the peer.
-func (a *dialActuator) run() {
+func (a *dialActuator) SetFinished() {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	a.finished = true
+}
+
+func (a *dialActuator) SetUnfinished() {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	a.finished = false
+}
+
+func (a *dialActuator) SetGiveUp() {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	a.giveUp = true
+}
+
+// Run executes the dialing process to establish a connection with the peer.
+func (a *dialActuator) Run() {
 	select {
 	case a.stateC <- struct{}{}:
 		defer func() { <-a.stateC }()
 	default:
 		return
 	}
-	if a.giveUp || a.finished {
+	if a.GiveUp() || a.Finished() {
 		return
 	}
 
@@ -238,7 +286,7 @@ func (a *dialActuator) run() {
 				Msg("peer connected, dial actuator will exit.").
 				Str("pid", a.pid.String()).
 				Done()
-			a.finished = true
+			a.SetFinished()
 			return true
 		}
 
@@ -268,42 +316,43 @@ Loop:
 				Int("times", a.tryTimes).
 				Err(err).
 				Done()
-		}
-		if conn == nil {
-			a.tryTimes++
-			a.supervisor.logger.Warn().
-				Msg("dial to peer failed, nil connection.").
-				Str("pid", a.pid.String()).
-				Str("addr", a.peerAddr.String()).
-				Int("times", a.tryTimes).
-				Done()
 		} else {
-			if a.pid != conn.RemotePeerID() {
+			if conn == nil {
+				a.tryTimes++
 				a.supervisor.logger.Warn().
-					Msg("dial to peer failed, pid mismatch, close the connection and give it up.").
+					Msg("dial to peer failed, nil connection.").
 					Str("pid", a.pid.String()).
-					Str("got", conn.RemotePeerID().String()).
-					Err(err).
+					Str("addr", a.peerAddr.String()).
+					Int("times", a.tryTimes).
 					Done()
-				_ = conn.Close()
-				a.giveUp = true
+			} else {
+				if a.pid != conn.RemotePeerID() {
+					a.supervisor.logger.Warn().
+						Msg("dial to peer failed, pid mismatch, close the connection and give it up.").
+						Str("pid", a.pid.String()).
+						Str("got", conn.RemotePeerID().String()).
+						Err(err).
+						Done()
+					_ = conn.Close()
+					a.SetGiveUp()
+					break Loop
+				}
+				a.supervisor.logger.Debug().
+					Msg("dial to peer success.").
+					Str("pid", a.pid.String()).
+					Str("addr", a.peerAddr.String()).
+					Done()
+				a.SetFinished()
 				break Loop
 			}
-			a.supervisor.logger.Debug().
-				Msg("dial to peer success.").
-				Str("pid", a.pid.String()).
-				Str("addr", a.peerAddr.String()).
-				Done()
-			a.finished = true
-			break Loop
 		}
-		if !a.finished && !a.giveUp {
+		if !a.Finished() && !a.GiveUp() {
 			if a.tryTimes >= len(a.fibonacci) {
 				a.supervisor.logger.Warn().Msg("can not dial to peer, give it up.").
 					Str("pid", a.pid.String()).
 					Str("addr", a.peerAddr.String()).
 					Done()
-				a.giveUp = true
+				a.SetGiveUp()
 				break Loop
 			}
 			timeout := time.Duration(a.fibonacci[a.tryTimes]) * time.Second

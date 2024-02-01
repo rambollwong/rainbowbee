@@ -149,6 +149,7 @@ func NewHost(logger *rainbowlog.Logger, opts ...Option) (h *Host, err error) {
 	}
 
 	// Initialize the network.
+	h.nwCfg.Ctx = h.ctx
 	h.nw, err = h.nwCfg.NewNetwork(h.logger)
 	if err != nil {
 		return nil, err
