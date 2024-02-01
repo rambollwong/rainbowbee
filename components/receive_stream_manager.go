@@ -67,7 +67,7 @@ func (r *ReceiveStreamManager) AddPeerReceiveStream(
 	conn network.Connection,
 	receiveStream network.ReceiveStream,
 ) error {
-	pid := conn.LocalPeerID()
+	pid := conn.RemotePeerID()
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	count, _ := r.countMap[pid]
@@ -102,7 +102,7 @@ func (r *ReceiveStreamManager) RemovePeerReceiveStream(
 	conn network.Connection,
 	receiveStream network.ReceiveStream,
 ) error {
-	pid := conn.LocalPeerID()
+	pid := conn.RemotePeerID()
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	count, _ := r.countMap[pid]
@@ -127,9 +127,7 @@ func (r *ReceiveStreamManager) RemovePeerReceiveStream(
 		} else {
 			r.countMap[pid] = count
 		}
-		// If all Receive Streams for a connection are removed, we consider the connection to be disconnected
 		if streamSet.Size() == 0 {
-			_ = conn.Close()
 			delete(connM, conn)
 		}
 	}
@@ -144,7 +142,7 @@ func (r *ReceiveStreamManager) RemovePeerReceiveStream(
 func (r *ReceiveStreamManager) GetConnReceiveStreamCount(conn network.Connection) int {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
-	connM, ok := r.streamMap[conn.LocalPeerID()]
+	connM, ok := r.streamMap[conn.RemotePeerID()]
 	if !ok {
 		return 0
 	}
