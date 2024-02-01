@@ -2,6 +2,7 @@ package safe
 
 import (
 	"fmt"
+	"runtime/debug"
 
 	"github.com/rambollwong/rainbowlog"
 )
@@ -13,6 +14,7 @@ func Go(f func()) {
 		defer func() {
 			if err := recover(); err != nil {
 				fmt.Printf("panic: %+v", err)
+				debug.PrintStack()
 			}
 		}()
 		f()
@@ -25,7 +27,8 @@ func LoggerGo(logger *rainbowlog.Logger, f func()) {
 	go func() {
 		defer func() {
 			if err := recover(); err != nil {
-				logger.Error().Msgf("panic: %+v", err).Done()
+				logger.Error().WithCallerSkip(4).Msgf("panic: %+v", err).Done()
+				debug.PrintStack()
 			}
 		}()
 		f()
