@@ -13,6 +13,7 @@ import (
 	"github.com/rambollwong/rainbowbee/core/reuse"
 	"github.com/rambollwong/rainbowbee/core/safe"
 	"github.com/rambollwong/rainbowbee/util"
+	catutil "github.com/rambollwong/rainbowcat/util"
 	"github.com/rambollwong/rainbowlog"
 
 	ma "github.com/multiformats/go-multiaddr"
@@ -46,10 +47,9 @@ type Network struct {
 	tlsEnabled bool
 	connC      chan network.Connection
 
-	localPID       peer.ID
-	localAddresses []ma.Multiaddr
-	tcpListeners   []net.Listener
-	listening      bool
+	localPID     peer.ID
+	tcpListeners []manet.Listener
+	listening    bool
 
 	closeC chan struct{}
 
@@ -58,19 +58,18 @@ type Network struct {
 
 func NewNetwork(opt ...Option) (*Network, error) {
 	n := &Network{
-		mu:             sync.RWMutex{},
-		once:           sync.Once{},
-		ctx:            context.Background(),
-		tlsCfg:         nil,
-		pidLoader:      nil,
-		tlsEnabled:     true,
-		connC:          make(chan network.Connection),
-		localPID:       "",
-		localAddresses: make([]ma.Multiaddr, 0, 10),
-		tcpListeners:   make([]net.Listener, 0, 2),
-		listening:      false,
-		closeC:         make(chan struct{}),
-		logger:         nil,
+		mu:           sync.RWMutex{},
+		once:         sync.Once{},
+		ctx:          context.Background(),
+		tlsCfg:       nil,
+		pidLoader:    nil,
+		tlsEnabled:   true,
+		connC:        make(chan network.Connection),
+		localPID:     "",
+		tcpListeners: make([]manet.Listener, 0, 2),
+		listening:    false,
+		closeC:       make(chan struct{}),
+		logger:       nil,
 	}
 
 	if err := n.apply(opt...); err != nil {
@@ -114,53 +113,49 @@ func (n *Network) dial(ctx context.Context, remoteAddr ma.Multiaddr) (conn *Conn
 	if dialRemoteAddr == nil && remotePID == "" || dialRemoteAddr == nil || !canDial(dialRemoteAddr) {
 		return nil, ErrWrongTcpAddr
 	}
-	if !canDial(dialRemoteAddr) {
-		return nil, ErrWrongTcpAddr
-	}
 
-	var (
-		remoteNetAddr net.Addr
-	)
-	remoteNetAddr, err = manet.ToNetAddr(dialRemoteAddr)
-	if err != nil {
-		n.logger.Error().Msg("failed to parse dial address to net address").Err(err).Done()
-		return nil, err
+	if manet.IsIPUnspecified(dialRemoteAddr) {
+		return nil, ErrCanNotDialToUnspecifiedAddr
+	}
+	if manet.IsIPLoopback(dialRemoteAddr) {
+		return nil, ErrCanNotDialToLoopbackAddr
 	}
 
 	if ctx == nil {
 		ctx = n.ctx
 	}
 	// try using each local address to dial to the remote
-	for _, localAddr := range n.localAddresses {
-		localNetAddr, err := manet.ToNetAddr(localAddr)
-		if err != nil {
-			n.logger.Warn().Msg("failed to parse local address to net address").Err(err).Done()
+	for _, listener := range n.tcpListeners {
+		listener := listener
+		localAddr := listener.Multiaddr()
+		if manet.IsIPUnspecified(localAddr) || manet.IsIPLoopback(localAddr) {
 			continue
 		}
+
 		// dial
-		dialer := &net.Dialer{
-			LocalAddr: localNetAddr,
-			Control:   control,
+		dialer := &manet.Dialer{
+			Dialer: net.Dialer{
+				Control: control,
+			},
+			LocalAddr: localAddr,
 		}
 		n.logger.Debug().
 			Msg("trying to dial...").
-			Str("local_net_address", localNetAddr.String()).
-			Str("remote_net_address", remoteNetAddr.String()).
-			Str("network", localNetAddr.Network()).
+			Str("local_address", localAddr.String()).
+			Str("remote_address", dialRemoteAddr.String()).
 			Done()
-		c, err := dialer.DialContext(ctx, remoteNetAddr.Network(), remoteNetAddr.String())
+		c, err := dialer.DialContext(ctx, dialRemoteAddr)
 		if err != nil {
 			n.logger.Debug().
 				Msg("failed to dial.").
-				Str("local_net_address", localNetAddr.String()).
-				Str("remote_net_address", remoteNetAddr.String()).
-				Str("network", localNetAddr.Network()).
+				Str("local_address", localAddr.String()).
+				Str("remote_address", dialRemoteAddr.String()).
 				Err(err).
 				Done()
 			continue
 		}
 		// dial up successful, create new conn
-		conn, err = NewConn(ctx, n, c, network.Outbound, remoteAddr)
+		conn, err = NewConn(ctx, n, c, network.Outbound)
 		if err != nil {
 			n.logger.Error().Msg("failed to crease new connection").Err(err).Done()
 			continue
@@ -175,9 +170,8 @@ func (n *Network) dial(ctx context.Context, remoteAddr ma.Multiaddr) (conn *Conn
 			return nil, ErrPidMismatch
 		}
 		n.logger.Debug().Msg("new connection dialed").
-			Str("local_net_address", localNetAddr.String()).
-			Str("remote_net_address", remoteNetAddr.String()).
-			Str("network", localNetAddr.Network()).
+			Str("local_address", conn.LocalAddr().String()).
+			Str("remote_address", conn.RemoteAddr().String()).
 			Str("remote_pid", conn.remotePID.String()).
 			Done()
 		return conn, err
@@ -227,93 +221,40 @@ func CanListen(addr ma.Multiaddr) bool {
 	return listenMatcher.Matches(addr)
 }
 
-// reGetListenAddresses get available addresses
-func (n *Network) reGetListenAddresses(addr ma.Multiaddr) ([]ma.Multiaddr, error) {
-	// convert multi addr to net addr
-	tcpAddr, err := manet.ToNetAddr(addr)
-	if err != nil {
-		return nil, err
-	}
-	// check if ip is an unspecified address
-	if tcpAddr.(*net.TCPAddr).IP.IsUnspecified() {
-		// if unspecified
-		// whether an ipv6 address
-		isIp6 := strings.Contains(tcpAddr.(*net.TCPAddr).IP.String(), ":")
-		// get local addresses usable
-		addrList, err := util.GetLocalAddresses()
-		if err != nil {
-			return nil, err
-		}
-		if len(addrList) == 0 {
-			return nil, ErrNoUsableLocalAddress
-		}
-		// split TCP protocol , like "/tcp/8081"
-		_, lastAddr := ma.SplitFunc(addr, func(component ma.Component) bool {
-			return component.Protocol().Code == ma.P_TCP
-		})
-		res := make([]ma.Multiaddr, 0, len(addrList))
-		for _, address := range addrList {
-			firstAddr, err := manet.FromNetAddr(address)
-			if err != nil {
-				return nil, err
-			}
-			// join ip protocol with TCP protocol
-			// like "/ip4/127.0.0.1" + "/tcp/8081" -> "/ip4/127.0.0.1/tcp/8081"
-			temp := ma.Join(firstAddr, lastAddr)
-			tempTcpAddr, err := manet.ToNetAddr(temp)
-			if err != nil {
-				return nil, err
-			}
-			tempIsIp6 := strings.Contains(tempTcpAddr.(*net.TCPAddr).IP.String(), ":")
-			// append it if they are the same version of ip,otherwise continue
-			if (isIp6 && !tempIsIp6) || (!isIp6 && tempIsIp6) {
-				continue
-			}
-			if CanListen(temp) {
-				res = append(res, temp)
-			}
-		}
-		if len(res) == 0 {
-			return nil, ErrNoUsableLocalAddress
-		}
-		return res, nil
-	}
-	res, e := manet.FromNetAddr(tcpAddr)
-	if e != nil {
-		return nil, e
-	}
-	return []ma.Multiaddr{res}, nil
-}
-
-func (n *Network) listenTCP(ctx context.Context, addresses []ma.Multiaddr) ([]net.Listener, error) {
+func (n *Network) listenTCP(ctx context.Context, addresses []ma.Multiaddr) ([]manet.Listener, error) {
 	if len(addresses) == 0 {
 		return nil, ErrEmptyListenAddress
 	}
-	listeners := make([]net.Listener, 0, len(addresses))
-	listenCfg := net.ListenConfig{Control: control}
+	listeners := make([]manet.Listener, 0, len(addresses))
+	listenCfg := net.ListenConfig{
+		Control: control,
+	}
 	for _, address := range addresses {
-		addr, _ := util.SplitAddrToTransportAndPID(address)
-		if addr == nil {
-			return nil, ErrNilAddr
+		if !CanListen(address) {
+			return nil, ErrWrongTcpAddr
 		}
-		netAddr, err := manet.ToNetAddr(addr)
+		nw, addr, err := manet.DialArgs(address)
 		if err != nil {
 			return nil, err
 		}
 		// try to listen
-		listener, err := listenCfg.Listen(ctx, netAddr.Network(), netAddr.String())
+		netListener, err := listenCfg.Listen(ctx, nw, addr)
 		if err != nil {
 			n.logger.Warn().
 				Msg("failed to listen on address").
-				Str("address", netAddr.String()).
+				Str("address", addr).
 				Err(err).
 				Done()
 			continue
 		}
+		listener, err := manet.WrapNetListener(netListener)
+		if err != nil {
+			return nil, err
+		}
 		listeners = append(listeners, listener)
 		n.logger.Info().
 			Msg("listening...").
-			Str("on", util.PIDAndNetAddrToMultiAddr(n.localPID, addr).String()).
+			Str("on", listener.Multiaddr().String()).
 			Done()
 	}
 	return listeners, nil
@@ -331,7 +272,7 @@ func (n *Network) resetCheck() {
 
 // listenerAcceptLoop this is an ongoing background task
 // that receives new connections from remote peers and processes them.
-func (n *Network) listenerAcceptLoop(listener net.Listener) {
+func (n *Network) listenerAcceptLoop(listener manet.Listener) {
 Loop:
 	for {
 		select {
@@ -353,14 +294,14 @@ Loop:
 		}
 
 		// handle new connection
-		conn, err := NewConn(n.ctx, n, c, network.Inbound, nil)
+		conn, err := NewConn(n.ctx, n, c, network.Inbound)
 		if err != nil {
 			n.logger.Error().Msg("failed to crease new connection").Err(err).Done()
 			continue
 		}
 		n.logger.Info().Msg("new connection accepted").
-			Str("local_address", conn.localAddr.String()).
-			Str("remote_address", conn.remoteAddr.String()).
+			Str("local_address", conn.LocalAddr().String()).
+			Str("remote_address", conn.RemoteAddr().String()).
 			Str("remote_pid", conn.remotePID.String()).
 			Done()
 
@@ -394,40 +335,29 @@ func (n *Network) Listen(ctx context.Context, addresses ...ma.Multiaddr) error {
 			n.logger.Info().Str("tls", "disabled").Done()
 		}
 
-		for _, address := range addresses {
-			if !CanListen(address) {
-				err = ErrWrongTcpAddr
-				return
-			}
-			listenAddresses, e := n.reGetListenAddresses(address)
-			if e != nil {
-				err = e
-				return
-			}
-			tcpListeners, e := n.listenTCP(ctx, listenAddresses)
-			if e != nil {
-				err = e
-				return
-			}
-			if len(tcpListeners) == 0 {
-				err = ErrListenerRequired
-				return
-			}
+		listenAddresses, e := manet.ResolveUnspecifiedAddresses(addresses, nil)
+		if e != nil {
+			err = e
+			return
+		}
 
-			for _, listener := range tcpListeners {
-				listener := listener
-				safe.LoggerGo(n.logger, func() {
-					n.listenerAcceptLoop(listener)
-				})
+		tcpListeners, e := n.listenTCP(ctx, listenAddresses)
+		if e != nil {
+			err = e
+			return
+		}
+		if len(tcpListeners) == 0 {
+			err = ErrListenerRequired
+			return
+		}
 
-				localAddress, e := manet.FromNetAddr(listener.Addr())
-				if e != nil {
-					err = e
-					return
-				}
-				n.localAddresses = append(n.localAddresses, localAddress)
-				n.tcpListeners = append(n.tcpListeners, listener)
-			}
+		for _, listener := range tcpListeners {
+			listener := listener
+			n.tcpListeners = append(n.tcpListeners, listener)
+			safe.LoggerGo(n.logger, func() {
+				n.listenerAcceptLoop(listener)
+			})
+
 		}
 
 		n.listening = true
@@ -440,8 +370,9 @@ func (n *Network) Listen(ctx context.Context, addresses ...ma.Multiaddr) error {
 func (n *Network) ListenAddresses() []ma.Multiaddr {
 	n.mu.Lock()
 	defer n.mu.Unlock()
-	res := make([]ma.Multiaddr, len(n.localAddresses))
-	copy(res, n.localAddresses)
+	res := catutil.SliceTransformType(n.tcpListeners, func(_ int, item manet.Listener) ma.Multiaddr {
+		return item.Multiaddr()
+	})
 	return res
 }
 

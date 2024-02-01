@@ -138,7 +138,7 @@ func NewHost(logger *rainbowlog.Logger, opts ...Option) (h *Host, err error) {
 		connExclusive:         make(map[peer.ID]network.Connection),
 		connExclusiveLock:     sync.Mutex{},
 		pushProtocolSignalC:   make(chan struct{}, 2),
-		notifyConnC:           make(chan network.Connection),
+		notifyConnC:           make(chan network.Connection, 1),
 		closeC:                make(chan struct{}),
 		logger:                logger.SubLogger(rainbowlog.WithLabels(loggerLabel)),
 	}
@@ -624,17 +624,15 @@ func (h *Host) notifyConnectHandlers(pid peer.ID, connectedOrDisconnected bool) 
 	})
 }
 
-// loop is the main event loop of the host.
-func (h *Host) loop() {
+// notifyConnLoop is the loop responsible for handling connection notifications and notifying registered handlers.
+func (h *Host) notifyConnLoop() {
 Loop:
 	for {
 		select {
+		case <-h.ctx.Done():
+			break Loop
 		case <-h.closeC:
 			break Loop
-		case conn := <-h.nw.AcceptedConnChan(): // new connection handler
-			if _, err := h.handleNewConnection(conn); err != nil {
-				h.logger.Error().Msg("failed to handle new connection").Err(err).Done()
-			}
 		case conn := <-h.notifyConnC: // connection notifier
 			h.notifyConnectHandlers(conn.RemotePeerID(), !conn.Closed())
 		}
@@ -667,6 +665,8 @@ func (h *Host) pushProtocolSignalLoop() {
 Loop:
 	for {
 		select {
+		case <-h.ctx.Done():
+			break Loop
 		case <-h.closeC:
 			break Loop
 		case <-h.pushProtocolSignalC:
@@ -675,9 +675,10 @@ Loop:
 	}
 }
 
-// runLoop starts the main event loops for handling connection notifications and push protocol signals.
+// runLoop starts the main event loops.
 func (h *Host) runLoop() {
-	safe.LoggerGo(h.logger, h.loop)
+	safe.LoggerGo(h.logger, h.acceptConnLoop)
+	safe.LoggerGo(h.logger, h.notifyConnLoop)
 	safe.LoggerGo(h.logger, h.pushProtocolSignalLoop)
 }
 
@@ -901,6 +902,8 @@ func (h *Host) acceptReceiveStreamLoop(conn network.Connection) {
 Loop:
 	for {
 		select {
+		case <-h.ctx.Done():
+			break Loop
 		case <-h.closeC:
 			// If the host is closed, break the loop.
 			break Loop
@@ -1087,6 +1090,23 @@ func (h *Host) handleNewConnection(conn network.Connection) (bool, error) {
 	}
 
 	return true, nil
+}
+
+// acceptConnLoop is the loop responsible for accepting new connections and handling them.
+func (h *Host) acceptConnLoop() {
+Loop:
+	for {
+		select {
+		case <-h.ctx.Done():
+			break Loop
+		case <-h.closeC:
+			break Loop
+		case conn := <-h.nw.AcceptedConnChan(): // new connection handler
+			if _, err := h.handleNewConnection(conn); err != nil {
+				h.logger.Error().Msg("failed to handle new connection").Err(err).Done()
+			}
+		}
+	}
 }
 
 // triggerPushProtocol triggers the push protocol mechanism.

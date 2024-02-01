@@ -36,7 +36,7 @@ type Conn struct {
 	ctx context.Context
 
 	nw *Network
-	c  net.Conn
+	c  manet.Conn
 
 	sess *yamux.Session
 
@@ -45,17 +45,15 @@ type Conn struct {
 	usableRSLock sync.Mutex
 	usableRS     map[*yamuxSendStream]struct{}
 
-	localAddr  ma.Multiaddr
-	localPID   peer.ID
-	remoteAddr ma.Multiaddr
-	remotePID  peer.ID
+	localPID  peer.ID
+	remotePID peer.ID
 
 	closeC    chan struct{}
 	closeOnce sync.Once
 }
 
-func NewConn(ctx context.Context, nw *Network, c net.Conn,
-	dir network.Direction, remoteAddr ma.Multiaddr) (*Conn, error) {
+func NewConn(ctx context.Context, nw *Network, c manet.Conn,
+	dir network.Direction) (*Conn, error) {
 	conn := &Conn{
 		BasicStatus:  *network.NewStatus(dir, time.Now(), nil),
 		ctx:          ctx,
@@ -66,25 +64,14 @@ func NewConn(ctx context.Context, nw *Network, c net.Conn,
 		usableRSLock: sync.Mutex{},
 		usableSS:     make(map[*yamuxReceiveStream]struct{}),
 		usableRS:     make(map[*yamuxSendStream]struct{}),
-		localAddr:    nil,
-		remoteAddr:   nil,
 		localPID:     nw.LocalPeerID(),
 		remotePID:    "",
 		closeC:       make(chan struct{}),
 		closeOnce:    sync.Once{},
 	}
 	var err error
-	conn.localAddr, err = manet.FromNetAddr(c.LocalAddr())
-	if err != nil {
-		return nil, err
-	}
-
-	conn.remoteAddr, err = manet.FromNetAddr(c.RemoteAddr())
-	if err != nil {
-		return nil, err
-	}
 	// start handshake
-	err = conn.handshakeAndAttachYamux(c, remoteAddr)
+	err = conn.handshakeAndAttachYamux(c)
 	if err != nil {
 		return nil, err
 	}
@@ -123,7 +110,7 @@ func (c *Conn) closed() bool {
 }
 
 func (c *Conn) LocalAddr() ma.Multiaddr {
-	return c.localAddr
+	return c.c.LocalMultiaddr()
 }
 
 func (c *Conn) LocalNetAddr() net.Addr {
@@ -135,7 +122,7 @@ func (c *Conn) LocalPeerID() peer.ID {
 }
 
 func (c *Conn) RemoteAddr() ma.Multiaddr {
-	return c.remoteAddr
+	return c.c.RemoteMultiaddr()
 }
 
 func (c *Conn) RemoteNetAddr() net.Addr {
@@ -165,7 +152,7 @@ func (c *Conn) AcceptReceiveStream() (network.ReceiveStream, error) {
 }
 
 // handshakeInbound handshake with remote peer over new inbound connection
-func (c *Conn) handshakeInbound(conn net.Conn) (net.Conn, error) {
+func (c *Conn) handshakeInbound(conn manet.Conn) (manet.Conn, error) {
 	var err error
 	finalConn := conn
 	if c.nw.tlsEnabled {
@@ -187,7 +174,7 @@ func (c *Conn) handshakeInbound(conn net.Conn) (net.Conn, error) {
 			_ = tlsConn.Close()
 			return nil, err
 		}
-		finalConn = tlsConn
+		finalConn, err = manet.WrapNetConn(tlsConn)
 	} else {
 		// exchange PID
 		// receive pid
@@ -209,10 +196,11 @@ func (c *Conn) handshakeInbound(conn net.Conn) (net.Conn, error) {
 }
 
 // handshakeOutbound handshake with remote peer over outbound connection
-func (c *Conn) handshakeOutbound(conn net.Conn, remoteAddr ma.Multiaddr) (net.Conn, error) {
+func (c *Conn) handshakeOutbound(conn manet.Conn) (manet.Conn, error) {
 	var err error
 	finalConn := conn
 	if c.nw.tlsEnabled {
+		remoteAddr := conn.RemoteMultiaddr()
 		// tls handshake
 		// outbound conn as client
 		tlsCfg := c.nw.tlsCfg.Clone()
@@ -238,7 +226,7 @@ func (c *Conn) handshakeOutbound(conn net.Conn, remoteAddr ma.Multiaddr) (net.Co
 			_ = tlsConn.Close()
 			return nil, err
 		}
-		finalConn = tlsConn
+		finalConn, err = manet.WrapNetConn(tlsConn)
 	} else {
 		// exchange PID
 		// send pid
@@ -260,7 +248,7 @@ func (c *Conn) handshakeOutbound(conn net.Conn, remoteAddr ma.Multiaddr) (net.Co
 }
 
 // attachYamuxInbound create sessions object that communicates with the remote peer through the inbound connection.
-func (c *Conn) attachYamuxInbound(conn net.Conn) error {
+func (c *Conn) attachYamuxInbound(conn manet.Conn) error {
 	// inbound conn as server
 	sess, err := yamux.Server(conn, defaultYamuxConfig, nil)
 	if err != nil {
@@ -274,7 +262,7 @@ func (c *Conn) attachYamuxInbound(conn net.Conn) error {
 }
 
 // attachYamuxOutbound create sessions object that communicates with the remote peer through the outbound connection
-func (c *Conn) attachYamuxOutbound(conn net.Conn) error {
+func (c *Conn) attachYamuxOutbound(conn manet.Conn) error {
 	// outbound conn as client
 	sess, err := yamux.Client(conn, defaultYamuxConfig, nil)
 	if err != nil {
@@ -289,9 +277,9 @@ func (c *Conn) attachYamuxOutbound(conn net.Conn) error {
 
 // handshakeAndAttachYamux Process the connection object, perform the TLS handshake and create a session object
 // that interacts with the renmote peer through the connection object.
-func (c *Conn) handshakeAndAttachYamux(conn net.Conn, remoteAddr ma.Multiaddr) error {
+func (c *Conn) handshakeAndAttachYamux(conn manet.Conn) error {
 	var err error
-	var finalConn net.Conn
+	var finalConn manet.Conn
 	switch c.Direction() {
 	case network.Inbound:
 		finalConn, err = c.handshakeInbound(conn)
@@ -303,7 +291,7 @@ func (c *Conn) handshakeAndAttachYamux(conn net.Conn, remoteAddr ma.Multiaddr) e
 			return err
 		}
 	case network.Outbound:
-		finalConn, err = c.handshakeOutbound(conn, remoteAddr)
+		finalConn, err = c.handshakeOutbound(conn)
 		if err != nil {
 			return err
 		}

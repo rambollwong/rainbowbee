@@ -1,8 +1,6 @@
 package util
 
 import (
-	"net"
-
 	ma "github.com/multiformats/go-multiaddr"
 	"github.com/rambollwong/rainbowbee/core/peer"
 )
@@ -27,26 +25,6 @@ func SplitAddrToTransportAndPID(addr ma.Multiaddr) (ma.Multiaddr, peer.ID) {
 		pid = peer.ID(pidStr)
 	}
 	return transport, pid
-}
-
-// GetLocalAddresses returns a list of net.Addr that can be used and are bound to each network interface.
-func GetLocalAddresses() ([]net.Addr, error) {
-	interfaces, err := net.Interfaces()
-	if err != nil {
-		return nil, err
-	}
-	var res []net.Addr
-	for _, i := range interfaces {
-		if i.Flags&net.FlagUp == 0 {
-			continue
-		}
-		addresses, err := i.Addrs()
-		if err != nil {
-			return nil, err
-		}
-		res = append(res, addresses...)
-	}
-	return res, nil
 }
 
 // PIDToMultiAddr converts a peer.ID to a p2p multiaddress.
