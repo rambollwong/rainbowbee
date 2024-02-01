@@ -6,6 +6,8 @@ import (
 )
 
 // Notifiee contains functions for host notification callbacks.
+// Each callback implementation should not block and should return as quickly as possible
+// to prevent degrading host performance.
 type Notifiee interface {
 	// OnPeerConnected is invoked when a new connection is established.
 	OnPeerConnected(pid peer.ID)
