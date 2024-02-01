@@ -22,6 +22,9 @@ type PeerProtocols struct {
 	Protocols []protocol.ID // List of supported protocol IDs
 }
 
+// ConnectionHandler is a function for handling connections.
+type ConnectionHandler func(conn network.Connection) (bool, error)
+
 // Host provides network capabilities.
 type Host interface {
 	core.Switcher

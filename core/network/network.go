@@ -7,17 +7,15 @@ import (
 	"github.com/rambollwong/rainbowlog"
 )
 
-// ConnectionHandler is a function for handling connections.
-type ConnectionHandler func(conn Connection) (bool, error)
-
 // Network is a state machine interface that provides a Dialer and a Listener to build a network.
 type Network interface {
 	Dialer
 	Listener
 	io.Closer
 
-	// SetConnHandler registers a ConnectionHandler to handle the established connections.
-	SetConnHandler(handler ConnectionHandler)
+	// AcceptedConnChan returns a channel for notifying about new connections.
+	// Whenever a new connection is accepted or dialed, Network should write the new connection to chan.
+	AcceptedConnChan() <-chan Connection
 
 	// Disconnect closes a connection.
 	Disconnect(conn Connection) error

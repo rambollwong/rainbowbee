@@ -248,9 +248,6 @@ func NewHost(logger *rainbowlog.Logger, opts ...Option) (h *Host, err error) {
 		return nil, err
 	}
 
-	// Set the connection handler for new incoming connections.
-	h.nw.SetConnHandler(h.handleNewConnection)
-
 	return h, nil
 }
 
@@ -627,14 +624,18 @@ func (h *Host) notifyConnectHandlers(pid peer.ID, connectedOrDisconnected bool) 
 	})
 }
 
-// loop is the main event loop of the host, responsible for handling connection notifications and closing the loop when requested.
+// loop is the main event loop of the host.
 func (h *Host) loop() {
 Loop:
 	for {
 		select {
 		case <-h.closeC:
 			break Loop
-		case conn := <-h.notifyConnC:
+		case conn := <-h.nw.AcceptedConnChan(): // new connection handler
+			if _, err := h.handleNewConnection(conn); err != nil {
+				h.logger.Error().Msg("failed to handle new connection").Err(err).Done()
+			}
+		case conn := <-h.notifyConnC: // connection notifier
 			h.notifyConnectHandlers(conn.RemotePeerID(), !conn.Closed())
 		}
 	}
@@ -843,9 +844,12 @@ Loop:
 			return
 		}
 
-		// Check if the receive stream's connection is closed with the given error and return if it is.
+		// Check if the receive stream's connection is closed with the given error.
 		if util.CheckClosedConnectionWithErr(conn, err) {
 			_ = conn.Close()
+			// This is returned directly without calling RemovePeerReceiveStream
+			// because all receiveStreams will be closed and removed uniformly when processing closed connections.
+			// See the handleClosingConn method for more information.
 			return
 		}
 
@@ -870,18 +874,6 @@ Loop:
 			Str("remote_addr", conn.RemoteAddr().String()).
 			Err(err).
 			Done()
-
-		// If all Receive Streams for a connection are removed, we consider the connection to be disconnected
-		if h.receiveStreamMgr.GetConnReceiveStreamCount(conn) == 0 {
-			h.logger.Debug().
-				Msg("all receive streams of the connection were removed, close the connection.").
-				Str("remote_pid", conn.RemotePeerID().String()).
-				Str("remote_addr", conn.RemoteAddr().String()).
-				Done()
-			_ = conn.Close()
-			// Call the handleClosingConn method to handle the closing connection.
-			h.handleClosingConn(conn)
-		}
 	}
 }
 
@@ -928,11 +920,12 @@ Loop:
 				break Loop
 			}
 			// Log a warning message about the failure to accept a receive stream.
-			h.logger.Warn().
-				Msg("failed to accept a receive stream").
+			h.logger.Debug().
+				Msg("failed to accept a receive stream, close the connection.").
 				Str("remote_addr", conn.RemoteAddr().String()).
 				Err(err).
 				Done()
+			_ = conn.Close()
 			continue
 		}
 
@@ -1065,8 +1058,6 @@ func (h *Host) handleNewConnection(conn network.Connection) (bool, error) {
 	safe.LoggerGo(h.logger, func() {
 		h.acceptReceiveStreamLoop(conn)
 	})
-
-	// todo go h.acceptBidirectionalStreamLoop(conn)
 
 	if err = h.store.AddAddress(rPID, conn.RemoteAddr()); err != nil {
 		h.logger.Debug().

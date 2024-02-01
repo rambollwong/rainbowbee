@@ -41,10 +41,10 @@ type Network struct {
 	once sync.Once
 	ctx  context.Context
 
-	tlsCfg      *tls.Config
-	pidLoader   peer.IDLoader
-	tlsEnabled  bool
-	connHandler network.ConnectionHandler
+	tlsCfg     *tls.Config
+	pidLoader  peer.IDLoader
+	tlsEnabled bool
+	connC      chan network.Connection
 
 	localPID       peer.ID
 	localAddresses []ma.Multiaddr
@@ -64,7 +64,7 @@ func NewNetwork(opt ...Option) (*Network, error) {
 		tlsCfg:         nil,
 		pidLoader:      nil,
 		tlsEnabled:     true,
-		connHandler:    nil,
+		connC:          make(chan network.Connection),
 		localPID:       "",
 		localAddresses: make([]ma.Multiaddr, 0, 10),
 		tcpListeners:   make([]net.Listener, 0, 2),
@@ -94,6 +94,9 @@ func (n *Network) checkTlsCfg() error {
 	}
 	if n.tlsCfg == nil {
 		return ErrNilTlsCfg
+	}
+	if n.pidLoader == nil {
+		return ErrNilPIDLoader
 	}
 	if n.tlsCfg.Certificates == nil || len(n.tlsCfg.Certificates) == 0 {
 		return ErrEmptyTlsCerts
@@ -183,25 +186,6 @@ func (n *Network) dial(ctx context.Context, remoteAddr ma.Multiaddr) (conn *Conn
 	return nil, ErrAllDialFailed
 }
 
-func (n *Network) callConnHandler(conn *Conn) bool {
-	var accept = true
-	var err error
-	if n.connHandler != nil {
-		accept, err = n.connHandler(conn)
-		if err != nil {
-			n.logger.Error().Msg("failed to call connection handler").Err(err).Done()
-		}
-		if !accept {
-			n.logger.Info().Msg("connection rejected by handler, close the connection").
-				Str("local_address", conn.localAddr.String()).
-				Str("remote_address", conn.remoteAddr.String()).
-				Str("remote_pid", conn.remotePID.String()).Done()
-			_ = conn.Close()
-		}
-	}
-	return accept
-}
-
 func (n *Network) Dial(ctx context.Context, remoteAddr ma.Multiaddr) (network.Connection, error) {
 	// listener required
 	if !n.listening {
@@ -215,9 +199,13 @@ func (n *Network) Dial(ctx context.Context, remoteAddr ma.Multiaddr) (network.Co
 		return nil, err
 	}
 
-	accept := n.callConnHandler(conn)
-	if !accept {
-		return nil, ErrConnRejectedByConnHandler
+	select {
+	case <-n.ctx.Done():
+		return nil, nil
+	case <-n.closeC:
+
+		return nil, nil
+	case n.connC <- conn:
 	}
 	return conn, nil
 }
@@ -363,10 +351,6 @@ Loop:
 			n.logger.Error().Msg("listener accept err").Err(err).Done()
 			continue
 		}
-		n.logger.Debug().
-			Msg("listener accept a connection").
-			Str("remote_address", c.RemoteAddr().String()).
-			Done()
 
 		// handle new connection
 		conn, err := NewConn(n.ctx, n, c, network.Inbound, nil)
@@ -379,14 +363,13 @@ Loop:
 			Str("remote_address", conn.remoteAddr.String()).
 			Str("remote_pid", conn.remotePID.String()).
 			Done()
-		// call conn handler
-		accept := n.callConnHandler(conn)
-		if !accept {
-			n.logger.Info().Msg("connection rejected by handler, close the connection").
-				Str("local_address", conn.localAddr.String()).
-				Str("remote_address", conn.remoteAddr.String()).
-				Str("remote_pid", conn.remotePID.String()).Done()
-			_ = conn.Close()
+
+		select {
+		case <-n.ctx.Done():
+			break Loop
+		case <-n.closeC:
+			break Loop
+		case n.connC <- conn:
 		}
 	}
 }
@@ -404,7 +387,6 @@ func (n *Network) Listen(ctx context.Context, addresses ...ma.Multiaddr) error {
 	}
 
 	n.once.Do(func() {
-		n.listening = true
 		n.logger.Info().Str("local_pid", n.localPID.String()).Done()
 		if n.tlsEnabled {
 			n.logger.Info().Str("tls", "enabled").Done()
@@ -433,6 +415,7 @@ func (n *Network) Listen(ctx context.Context, addresses ...ma.Multiaddr) error {
 			}
 
 			for _, listener := range tcpListeners {
+				listener := listener
 				safe.LoggerGo(n.logger, func() {
 					n.listenerAcceptLoop(listener)
 				})
@@ -446,6 +429,8 @@ func (n *Network) Listen(ctx context.Context, addresses ...ma.Multiaddr) error {
 				n.tcpListeners = append(n.tcpListeners, listener)
 			}
 		}
+
+		n.listening = true
 	})
 
 	return err
@@ -460,11 +445,11 @@ func (n *Network) ListenAddresses() []ma.Multiaddr {
 	return res
 }
 
-// SetConnHandler register a ConnectionHandler to handle the connection established.
-func (n *Network) SetConnHandler(handler network.ConnectionHandler) {
-	n.mu.Lock()
-	defer n.mu.Unlock()
-	n.connHandler = handler
+// AcceptedConnChan returns a channel for notifying about new connections.
+func (n *Network) AcceptedConnChan() <-chan network.Connection {
+	n.mu.RLock()
+	defer n.mu.RUnlock()
+	return n.connC
 }
 
 // Disconnect a connection.
