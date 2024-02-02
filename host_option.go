@@ -77,6 +77,30 @@ func WithMsgCompressible() Option {
 	}
 }
 
+// WithPayloadUnmarshalConcurrency sets the concurrency of the payload unmarshaler.
+func WithPayloadUnmarshalConcurrency(c uint8) Option {
+	return func(h *Host) error {
+		h.cfg.PayloadUnmarshalerConcurrency = c
+		return nil
+	}
+}
+
+// WithPayloadHandlerRouterConcurrency sets the concurrency of the payload handler router.
+func WithPayloadHandlerRouterConcurrency(c uint8) Option {
+	return func(h *Host) error {
+		h.cfg.PayloadHandlerRouterConcurrency = c
+		return nil
+	}
+}
+
+// WithHandlerExecutorConcurrency sets the concurrency of the handler executor.
+func WithHandlerExecutorConcurrency(puc uint8) Option {
+	return func(h *Host) error {
+		h.cfg.HandlerExecutorConcurrency = puc
+		return nil
+	}
+}
+
 // WithNetworkType sets the network type for the Host.
 func WithNetworkType(networkType NetworkType) Option {
 	return func(h *Host) error {

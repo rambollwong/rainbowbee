@@ -58,9 +58,9 @@ type hostConfig struct {
 	BlackPIDs         []peer.ID                // The blacklisted peer IDs.
 	CompressMsg       bool                     // Whether to compress messages.
 
-	PayloadUnmarshalerConcurrency   uint8
-	PayloadHandlerRouterConcurrency uint8
-	HandlerExecutorConcurrency      uint8
+	PayloadUnmarshalerConcurrency   uint8 // The concurrency of payload unmarshaler.
+	PayloadHandlerRouterConcurrency uint8 // The concurrency of payload handler router.
+	HandlerExecutorConcurrency      uint8 // The concurrency of handler executor.
 }
 
 // Host is the main struct representing the Rainbow-bee host.
