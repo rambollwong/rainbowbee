@@ -259,8 +259,8 @@ func (h *Host) Start() (err error) {
 		// Log an informational message indicating that the host is starting.
 		h.logger.Info().Msg("starting host...").Done()
 
-		// Create a channel for signaling the host to stop.
-		h.closeC = make(chan struct{})
+		// Reset host state
+		h.reset()
 
 		// Run the host's main loop.
 		h.runLoop()
@@ -590,6 +590,14 @@ func (h *Host) LocalAddresses() []ma.Multiaddr {
 // Network returns the network associated with the host.
 func (h *Host) Network() network.Network {
 	return h.nw
+}
+
+// reset resets the state of the host.
+func (h *Host) reset() {
+	h.connExclusive = make(map[peer.ID]network.Connection)
+	h.pushProtocolSignalC = make(chan struct{}, 2)
+	h.notifyConnC = make(chan network.Connection, 1)
+	h.closeC = make(chan struct{})
 }
 
 // notifyProtocolHandlers notifies all registered notifiees about the support or lack of support for a specific protocol by a peer.
