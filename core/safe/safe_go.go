@@ -27,8 +27,7 @@ func LoggerGo(logger *rainbowlog.Logger, f func()) {
 	go func() {
 		defer func() {
 			if err := recover(); err != nil {
-				logger.Error().WithCallerSkip(4).Msgf("panic: %+v", err).Done()
-				debug.PrintStack()
+				logger.Error().WithCallerSkip(4).Msgf("panic: %+v, stack: \n%s\n", err, string(debug.Stack())).Done()
 			}
 		}()
 		f()
