@@ -1,0 +1,21 @@
+syntax = "proto3";
+
+option go_package = "github.com/rambollwong/rainbowbee/service/discovery/pb";
+
+package discovery;
+
+message DiscoveryMsg {
+  Type type = 1;
+  repeated PeerInfo pInfos = 2;
+  uint32 size = 3;
+  enum Type {
+    Announce = 0;
+    SearchReq = 1;
+    SearchRes = 2;
+  }
+}
+
+message PeerInfo {
+  string pid = 1;
+  repeated string addr = 2;
+}

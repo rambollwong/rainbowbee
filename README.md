@@ -26,10 +26,11 @@ A p2p network library for Go.
   - [x] blacklist
 - [x] Host(MVP)
 - [ ] Service
-  - [ ] discovery (protocol based) (in progress)
+  - [x] discovery (protocol based)
   - [ ] broadcast
-    - [ ] pubsub
-  - [ ] group multicast
+    - [ ] pubsub  
+  - [ ] group multicast (in progress)
   - [ ] consensus
     - [ ] Raft
+- [ ] All testcases
   
