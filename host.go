@@ -277,6 +277,12 @@ func (h *Host) Start() (err error) {
 			return
 		}
 
+		// Save listening addresses to store.
+		err = h.store.AddAddress(h.nw.LocalPeerID(), h.nw.ListenAddresses()...)
+		if err != nil {
+			return
+		}
+
 		// Start the supervisor.
 		err = h.supervisor.Start()
 		if err != nil {

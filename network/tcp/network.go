@@ -356,7 +356,6 @@ func (n *Network) Listen(ctx context.Context, addresses ...ma.Multiaddr) error {
 			safe.LoggerGo(n.logger, func() {
 				n.listenerAcceptLoop(listener)
 			})
-
 		}
 
 		n.listening = true

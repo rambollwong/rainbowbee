@@ -2,6 +2,7 @@ package util
 
 import (
 	ma "github.com/multiformats/go-multiaddr"
+	manet "github.com/multiformats/go-multiaddr/net"
 	"github.com/rambollwong/rainbowbee/core/peer"
 )
 
@@ -51,4 +52,17 @@ func ContainsDNS(addr ma.Multiaddr) bool {
 		}
 	}
 	return false
+}
+
+// ExcludeUnspecifiedAndLoopBack filters out unspecified and loopback addresses from the given list.
+func ExcludeUnspecifiedAndLoopBack(addresses []ma.Multiaddr) []ma.Multiaddr {
+	res := make([]ma.Multiaddr, 0, len(addresses))
+	for _, address := range addresses {
+		addr := address
+		if manet.IsIPUnspecified(addr) || manet.IsIPLoopback(addr) {
+			continue
+		}
+		res = append(res, addr)
+	}
+	return res
 }
