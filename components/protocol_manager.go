@@ -5,6 +5,7 @@ import (
 	"sync"
 
 	"github.com/rambollwong/rainbowbee/core/handler"
+	"github.com/rambollwong/rainbowbee/core/host"
 	"github.com/rambollwong/rainbowbee/core/manager"
 	"github.com/rambollwong/rainbowbee/core/peer"
 	"github.com/rambollwong/rainbowbee/core/protocol"
@@ -21,6 +22,7 @@ var (
 
 // ProtocolManager manages protocols and protocol message handlers for peers.
 type ProtocolManager struct {
+	lPID                peer.ID
 	mu                  sync.RWMutex
 	handlers            map[protocol.ID]handler.MsgPayloadHandler
 	protocolBook        store.ProtocolBook
@@ -41,6 +43,10 @@ func NewProtocolManager(protocolBook store.ProtocolBook) *ProtocolManager {
 	}
 }
 
+func (p *ProtocolManager) AttachHost(h host.Host) {
+	p.lPID = h.ID()
+}
+
 // RegisterMsgPayloadHandler registers a protocol and associates a handler.MsgPayloadHandler with it.
 // It returns an error if the registration fails.
 func (p *ProtocolManager) RegisterMsgPayloadHandler(protocolID protocol.ID, handler handler.MsgPayloadHandler) error {
@@ -51,6 +57,11 @@ func (p *ProtocolManager) RegisterMsgPayloadHandler(protocolID protocol.ID, hand
 		return ErrProtocolIDRegistered
 	}
 	p.handlers[protocolID] = handler
+	if p.lPID != "" {
+		if err := p.protocolBook.AddProtocol(p.lPID, protocolID); err != nil {
+			return err
+		}
+	}
 	return nil
 }
 
@@ -64,6 +75,11 @@ func (p *ProtocolManager) UnregisterMsgPayloadHandler(protocolID protocol.ID) er
 		return ErrProtocolIDNotRegistered
 	}
 	delete(p.handlers, protocolID)
+	if p.lPID != "" {
+		if err := p.protocolBook.DeleteProtocol(p.lPID, protocolID); err != nil {
+			return err
+		}
+	}
 	return nil
 }
 
