@@ -30,5 +30,7 @@ type GroupMulticast interface {
 	SendToGroupSync(groupName string, protocolID protocol.ID, data []byte) error
 
 	// SendToGroupAsync sends data asynchronously to the group without waiting.
-	SendToGroupAsync(groupName string, protocolID protocol.ID, data []byte)
+	// Errors that occur during sending will be notified via the returned error chan
+	// which will be closed after execution ends.
+	SendToGroupAsync(groupName string, protocolID protocol.ID, data []byte) <-chan error
 }
