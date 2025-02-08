@@ -38,6 +38,7 @@ const (
 )
 
 var (
+	ErrNilPrivateKey          = errors.New("private key is nil")
 	ErrPeerNotConnected       = errors.New("peer is not connected")
 	ErrProtocolNotSupported   = errors.New("protocol is not supported")
 	ErrSendStreamPoolNotFound = errors.New("send stream pool not found")
@@ -149,6 +150,9 @@ func NewHost(logger *rainbowlog.Logger, opts ...Option) (h *Host, err error) {
 	}
 
 	// Initialize the network.
+	if h.nwCfg.PrivateKey == nil {
+		return nil, ErrNilPrivateKey
+	}
 	h.nwCfg.Ctx = h.ctx
 	h.nw, err = h.nwCfg.NewNetwork(h.logger)
 	if err != nil {
@@ -186,7 +190,7 @@ func NewHost(logger *rainbowlog.Logger, opts ...Option) (h *Host, err error) {
 		}
 	}
 
-	// Initialize the send stream pool manager if not provided.
+	// Initialize the sending stream pool manager if not provided.
 	if h.sendStreamPoolMgr == nil {
 		h.sendStreamPoolMgr = components.NewSendStreamPoolManager()
 	}
@@ -194,7 +198,7 @@ func NewHost(logger *rainbowlog.Logger, opts ...Option) (h *Host, err error) {
 		c.AttachHost(h)
 	}
 
-	// Initialize the receive stream manager if not provided.
+	// Initialize the receiving stream manager if not provided.
 	if h.receiveStreamMgr == nil {
 		h.receiveStreamMgr = components.NewReceiveStreamManager()
 	}
@@ -281,6 +285,13 @@ func (h *Host) Start() (err error) {
 		err = h.store.AddAddress(h.nw.LocalPeerID(), h.nw.ListenAddresses()...)
 		if err != nil {
 			return
+		}
+
+		// Set direct peers into supervisor and connection manager.
+		for pid, dp := range h.cfg.DirectPeers {
+			if err = h.setDirectPeer(pid, dp); err != nil {
+				return
+			}
 		}
 
 		// Start the supervisor.
@@ -565,15 +576,7 @@ func (h *Host) AddDirectPeer(dp ma.Multiaddr) error {
 	// Add the peer ID and multiaddress to the directPeers map.
 	h.cfg.DirectPeers[pid] = dp
 
-	// Set the peer's address in the supervisor.
-	h.supervisor.SetPeerAddr(pid, dp)
-
-	// Add the peer to the high-level connection manager if applicable.
-	if levelConnManager, ok := h.connMgr.(*components.LevelConnectionManager); ok {
-		levelConnManager.AddHighLevelPeer(pid)
-	}
-
-	return nil
+	return h.setDirectPeer(pid, dp)
 }
 
 // ClearDirectPeers removes all direct peers from the host.
@@ -604,6 +607,18 @@ func (h *Host) reset() {
 	h.pushProtocolSignalC = make(chan struct{}, 2)
 	h.notifyConnC = make(chan network.Connection, 1)
 	h.closeC = make(chan struct{})
+}
+
+func (h *Host) setDirectPeer(pid peer.ID, dp ma.Multiaddr) error {
+	// Set the peer's address in the supervisor.
+	h.supervisor.SetPeerAddr(pid, dp)
+
+	// Add the peer to the high-level connection manager if applicable.
+	if levelConnManager, ok := h.connMgr.(*components.LevelConnectionManager); ok {
+		levelConnManager.AddHighLevelPeer(pid)
+	}
+
+	return nil
 }
 
 // notifyProtocolHandlers notifies all registered notifiees about the support or lack of support for a specific protocol by a peer.
@@ -1192,6 +1207,11 @@ func (h *Host) dial(pid peer.ID, addr ma.Multiaddr) (network.Connection, error) 
 		if err == nil {
 			return conn, nil
 		}
+		h.logger.Info().Msg("failed to dial.").
+			Str("remote_pid", pid.String()).
+			Str("remote_addr", addr.String()).
+			Err(err).
+			Done()
 	}
 
 	// All dial attempts failed.

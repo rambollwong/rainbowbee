@@ -124,6 +124,9 @@ func (p *ProtocolDiscovery) Announce(ctx context.Context, serviceName string) er
 	}
 	localAddresses := p.h.LocalAddresses()
 	localAddresses = util.ExcludeUnspecifiedAndLoopBack(localAddresses)
+	if len(localAddresses) == 0 {
+		return nil
+	}
 	announceMsg := &pb.DiscoveryMsg{
 		Type: pb.DiscoveryMsg_Announce,
 		PInfos: []*pb.PeerInfo{

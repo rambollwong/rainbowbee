@@ -38,12 +38,13 @@ func (t NetworkType) String() string {
 
 // NetworkConfig represents the configuration for creating a network instance.
 type NetworkConfig struct {
-	Type       NetworkType
-	Ctx        context.Context
-	PrivateKey cc.PriKey
-	TLSEnabled bool
-	TLSConfig  *tls.Config
-	PIDLoader  peer.IDLoader
+	Type                NetworkType
+	Ctx                 context.Context
+	PrivateKey          cc.PriKey
+	TLSEnabled          bool
+	TLSConfig           *tls.Config
+	PIDLoader           peer.IDLoader
+	DialLoopbackEnabled bool
 
 	localPID peer.ID
 }
@@ -85,6 +86,9 @@ func (c NetworkConfig) newTCPNetwork(logger *rainbowlog.Logger) (network.Network
 	}
 	if c.PIDLoader != nil {
 		opts = append(opts, tcp.WithPIDLoader(c.PIDLoader))
+	}
+	if c.DialLoopbackEnabled {
+		opts = append(opts, tcp.WithDialLoopbackEnable())
 	}
 	return tcp.NewNetwork(opts...)
 }

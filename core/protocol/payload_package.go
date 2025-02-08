@@ -27,8 +27,8 @@ var (
 type PayloadPackage interface {
 	ProtocolID() ID           // Returns the protocol ID.
 	Payload() []byte          // Returns the payload data.
-	Marshal() ([]byte, error) // Marshals the payload package into a byte slice.
-	Unmarshal([]byte) error   // Unmarshals the byte slice into the payload package.
+	Marshal() ([]byte, error) // Marshal the payload package into a byte slice.
+	Unmarshal([]byte) error   // Unmarshal the byte slice into the payload package.
 }
 
 // PayloadPkg represents a protocol payload package.
@@ -56,7 +56,7 @@ func (p *PayloadPkg) Payload() []byte {
 	return p.payload
 }
 
-// Marshal marshals the payload package into a byte slice.
+// Marshal the payload package into a byte slice.
 func (p *PayloadPkg) Marshal() (bz []byte, err error) {
 	protocolLength := len(p.protocol)
 	var finalPayload []byte
@@ -81,7 +81,7 @@ func (p *PayloadPkg) Marshal() (bz []byte, err error) {
 	return bz, err
 }
 
-// Unmarshal unmarshals the byte slice into the payload package.
+// Unmarshal the byte slice into the payload package.
 func (p *PayloadPkg) Unmarshal(bz []byte) (err error) {
 	if len(bz) <= 17 {
 		return ErrInvalidDataLength

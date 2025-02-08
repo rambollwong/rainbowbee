@@ -1,6 +1,6 @@
 module github.com/rambollwong/rainbowbee
 
-go 1.22
+go 1.23
 
 require (
 	github.com/decred/dcrd/dcrec/secp256k1/v4 v4.2.0
@@ -10,8 +10,8 @@ require (
 	github.com/multiformats/go-multiaddr-fmt v0.1.0
 	github.com/multiformats/go-multihash v0.0.14
 	github.com/pkg/errors v0.9.1
-	github.com/rambollwong/rainbowcat v0.0.0-20240130085147-7ac5a4e7ba10
-	github.com/rambollwong/rainbowlog v0.0.3
+	github.com/rambollwong/rainbowcat v0.0.0-20250206043332-9b571afe68ca
+	github.com/rambollwong/rainbowlog v0.0.5
 	golang.org/x/sys v0.15.0
 	google.golang.org/protobuf v1.31.0
 )

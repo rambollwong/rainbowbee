@@ -42,10 +42,11 @@ type Network struct {
 	once sync.Once
 	ctx  context.Context
 
-	tlsCfg     *tls.Config
-	pidLoader  peer.IDLoader
-	tlsEnabled bool
-	connC      chan network.Connection
+	tlsCfg              *tls.Config
+	pidLoader           peer.IDLoader
+	tlsEnabled          bool
+	dialLoopbackEnabled bool
+	connC               chan network.Connection
 
 	localPID     peer.ID
 	tcpListeners []manet.Listener
@@ -117,7 +118,7 @@ func (n *Network) dial(ctx context.Context, remoteAddr ma.Multiaddr) (conn *Conn
 	if manet.IsIPUnspecified(dialRemoteAddr) {
 		return nil, ErrCanNotDialToUnspecifiedAddr
 	}
-	if manet.IsIPLoopback(dialRemoteAddr) {
+	if !n.dialLoopbackEnabled && manet.IsIPLoopback(dialRemoteAddr) {
 		return nil, ErrCanNotDialToLoopbackAddr
 	}
 
@@ -128,7 +129,7 @@ func (n *Network) dial(ctx context.Context, remoteAddr ma.Multiaddr) (conn *Conn
 	for _, listener := range n.tcpListeners {
 		listener := listener
 		localAddr := listener.Multiaddr()
-		if manet.IsIPUnspecified(localAddr) || manet.IsIPLoopback(localAddr) {
+		if manet.IsIPUnspecified(localAddr) || (!n.dialLoopbackEnabled && manet.IsIPLoopback(localAddr)) {
 			continue
 		}
 
