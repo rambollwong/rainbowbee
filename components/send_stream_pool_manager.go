@@ -70,7 +70,7 @@ func (s *SendStreamPoolManager) AddPeerConnSendStreamPool(
 	connM[conn] = sendStreamPool
 	s.logger.Debug().Msg("send stream pool added.").
 		Str("pid", pid.String()).
-		Str("conn-remote-addr", conn.RemoteAddr().String()).
+		Str("conn_remote_addr", conn.RemoteAddr().String()).
 		Done()
 	return nil
 }
@@ -94,7 +94,7 @@ func (s *SendStreamPoolManager) RemovePeerConnAndCloseSendStreamPool(pid peer.ID
 	err := pool.Close()
 	s.logger.Debug().Msg("conn removed and send stream pool closed.").
 		Str("pid", pid.String()).
-		Str("conn-remote-addr", conn.RemoteAddr().String()).
+		Str("conn_remote_addr", conn.RemoteAddr().String()).
 		Err(err).
 		Done()
 	return err
@@ -125,8 +125,8 @@ func (s *SendStreamPoolManager) GetPeerBestConnSendStreamPool(pid peer.ID) manag
 	// todo need to add Connection expansion logic here?
 	s.logger.Debug().Msg("best send stream pool of connections got.").
 		Str("pid", pid.String()).
-		Str("conn-remote-addr", conn.RemoteAddr().String()).
-		Int("idle-size", idleSize).
+		Str("conn_remote_addr", conn.RemoteAddr().String()).
+		Int("idle_size", idleSize).
 		Done()
 	return sendStreamPool
 }
