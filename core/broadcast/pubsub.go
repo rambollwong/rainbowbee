@@ -9,6 +9,8 @@ import (
 
 // PubSub provides functions for broadcasting and subscribing messages to the network.
 type PubSub interface {
+	host.Components
+
 	// AllMetadataOnlyPeers returns a list of peer.IDs that communicate with us using a metadata-only link.
 	AllMetadataOnlyPeers() []peer.ID
 
@@ -32,9 +34,6 @@ type PubSub interface {
 	// HostNotifiee returns an implementation of the host.Notifiee interface.
 	// It will be registered in the host.Host.Notify method.
 	HostNotifiee() host.Notifiee
-
-	// AttachHost sets up the given host for the PubSub service.
-	AttachHost(h host.Host) error
 
 	// ID returns the local peer ID.
 	ID() peer.ID
