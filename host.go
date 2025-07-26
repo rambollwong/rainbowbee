@@ -884,10 +884,10 @@ Loop:
 			return
 		}
 
-		// Close the receive stream.
+		// Close the receiving stream.
 		_ = receiveStream.Close()
 
-		// Remove the receive stream from the receive stream manager.
+		// Remove the receiving stream from the receiving stream manager.
 		if err := h.receiveStreamMgr.RemovePeerReceiveStream(conn, receiveStream); err != nil {
 			h.logger.Debug().
 				Msg("failed to remove receive stream from the manager.").
@@ -898,7 +898,7 @@ Loop:
 			return
 		}
 
-		// Log a warning message about the failure to read data from the receive stream.
+		// Log a debugging message about the failure to read data from the receiving stream.
 		h.logger.Debug().
 			Msg("failed to read data from the receive stream.").
 			Str("remote_pid", conn.RemotePeerID().String()).
